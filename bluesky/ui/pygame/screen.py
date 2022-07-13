@@ -19,21 +19,22 @@ from .console import Console
 from .menu import Menu
 from .dialog import fileopen as opendialog
 
-black    = (0, 0, 0)
-white    = (255,255,255)
+black = (0, 0, 0)
+white = (255, 255, 255)
 darkgrey = (25, 25, 48)
-grey     = (84, 84, 114)
+grey = (84, 84, 114)
 darkblue = (25, 25, 64, 100)
-white    = (255, 255, 255)
-green    = (0, 255, 0)
-blue     = (0, 0, 255)
-red      = (255, 0, 0)
-cyan     = (0,150,150)
+white = (255, 255, 255)
+green = (0, 255, 0)
+blue = (0, 0, 255)
+red = (255, 0, 0)
+cyan = (0, 150, 150)
 lightgreyblue = (130, 150, 190)  # waypoint symbol color
 lightgreygreen = (149, 215, 179)  # grid color
 lightcyan = (0, 255, 255)  # FIR boundaries
-amber    = (255,163,71)  # Conflicting aircraft
-magenta  = (255,0,255) # Used for route
+amber = (255, 163, 71)  # Conflicting aircraft
+magenta = (255, 0, 255)  # Used for route
+
 
 class Screen:
     """
@@ -55,13 +56,14 @@ class Screen:
     Updated by : Jerom Maas
 
     """
+
     def __init__(self):
         # processes input from keyboard & mouse
         self.keyb = Keyboard()
 
         # Parameters for making screenshots
         self.session = "new"
-        self.folder  = ""
+        self.folder = ""
         self.screenshot = False
         self.screenshotname = ""
 
@@ -80,7 +82,7 @@ class Screen:
         self.dts = []
 
     def reset(self):
-        self.objdel()     # Delete user defined objects
+        self.objdel()  # Delete user defined objects
 
     def init(self):
         # Read Screen configuration file:
@@ -111,22 +113,20 @@ class Screen:
         self.ctrlat = avelat
         self.ctrlon = avelon
 
-
-        #----------------------------SYMBOLS-----------------------------
+        # ----------------------------SYMBOLS-----------------------------
         # Read graphics for acsymbol (normal = green) + amber
         self.acsymbol = []
         for i in range(60):
             self.acsymbol.append(pg.image.load("data/graphics/acsymbol/acsymbol" \
-                                  + str(i) + ".png"))
+                                               + str(i) + ".png"))
 
         self.ambacsymbol = []
         for i in range(60):
             self.ambacsymbol.append(pg.image.load("data/graphics/amb-acsymbol/amb-acsymbol" \
-                                     + str(i) + ".png"))
+                                                  + str(i) + ".png"))
 
         # Lable lines& default no trails
         self.swlabel = 3
-
 
         # Read and scale waypoint symbol
         wptgif = pg.image.load("data/graphics/waypoint.gif")
@@ -139,12 +139,12 @@ class Screen:
         self.apsw = 1  # 0 = None, 1 = Large, 2 = All
 
         # Free flight displays
-        self.swsep = False # To show circles of 2.5 nm radius around each aircraft
-                           # Note: circles will be distorted when away from equator
-        self.swspd = False # To show speed vectors of each aircraft
-        self.swtestarea= False
+        self.swsep = False  # To show circles of 2.5 nm radius around each aircraft
+        # Note: circles will be distorted when away from equator
+        self.swspd = False  # To show speed vectors of each aircraft
+        self.swtestarea = False
 
-        #--------------------------------MAPS---------------------------------
+        # --------------------------------MAPS---------------------------------
         # Read map of world
         self.mapbmp = pg.image.load("data/graphics/world.jpg")
         w, h = self.mapbmp.get_size()
@@ -157,7 +157,7 @@ class Screen:
         self.mapay = (y2 - y1) / (lat2 - lat1)
         self.mapby = y2 - self.mapay * lat2
 
-        self.swsat = True
+        self.swsat = False
 
         # Nav display projection mode
         self.swnavdisp = False
@@ -166,11 +166,10 @@ class Screen:
         self.ndlon = 0.0
         self.ndhdg = 0.0
 
-        #------------------------WINDOW SETUP and scaling--------------------------
+        # ------------------------WINDOW SETUP and scaling--------------------------
         # Empty tuple to force reselection waypoints & airports to be drawn
         self.navsel = ()  # Empty tuple to force reselection waypoints to be drawn
         self.satsel = ()  # Empty tuple to force reselection satellite imagery to be drawn
-
 
         # Set up window
         splash.destroy()  # does pg.display.quit()!
@@ -198,7 +197,7 @@ class Screen:
         self.radbmp = self.win.copy()
         self.redrawradbg = True  # Switch to redraw background
 
-        #---------------------RADAR FONTS & EDIT WINDOW-----------------------------
+        # ---------------------RADAR FONTS & EDIT WINDOW-----------------------------
         # Set up fonts
         self.fontrad = Fastfont(self.win, 'Arial', 14, green, False, False)  # name, size, bold,italic
         self.fontamb = Fastfont(self.win, 'Arial', 14, amber, False, False)  # name, size, bold,italic
@@ -213,10 +212,9 @@ class Screen:
         self.editwin = Console(self.win, nch, nlin, winx, winy)
 
         # Menu button window
-        self.menu = Menu(self.win,10,36)
+        self.menu = Menu(self.win, 10, 36)
 
-
-        #-------------------------COASTLINE DATA--------------------------------------
+        # -------------------------COASTLINE DATA--------------------------------------
         # Init geo (coastline)  data
         f = open("data/navdata/coastlines.dat", 'r')
         print("Reading coastlines.dat")
@@ -270,16 +268,16 @@ class Screen:
         self.rtewplabel = []
 
         # User defined background objects
-        self.objtype    = []
-        self.objcolor   = []
-        self.objdata    = []
-        self.objname    = []
+        self.objtype = []
+        self.objcolor = []
+        self.objdata = []
+        self.objname = []
 
         # Wpt and apt drawing logic memory
-        self.wpswbmp = []              # switch indicating whether label bmp is present
-        self.wplabel = []              # List to store bitmaps of label
-        self.apswbmp = []              # switch indicating whether label bmp is present
-        self.aplabel = []              # List to store bitmaps of label
+        self.wpswbmp = []  # switch indicating whether label bmp is present
+        self.wplabel = []  # List to store bitmaps of label
+        self.apswbmp = []  # switch indicating whether label bmp is present
+        self.aplabel = []  # List to store bitmaps of label
 
         self.updateNavBuffers()
         return
@@ -307,7 +305,7 @@ class Screen:
         return
 
     def showssd(self, param):
-        return False,"SSD visualization only available in QtGL GUI"
+        return False, "SSD visualization only available in QtGL GUI"
 
     def cmdline(self, text):
         self.editwin.insert(text)
@@ -332,7 +330,7 @@ class Screen:
         # For measuring game loop frequency
         self.dts.append(bs.sim.simdt)
         if len(self.dts) > 20:
-                del self.dts[0]
+            del self.dts[0]
 
         # Radar window
         # --------------Background--------------
@@ -342,7 +340,7 @@ class Screen:
                 self.radbmp.fill(darkgrey)
 
             else:
-                #--------------Satellite image--------------
+                # --------------Satellite image--------------
                 navsel = (self.lat0, self.lat1, \
                           self.lon0, self.lon1)
                 if not self.satsel == navsel:
@@ -401,7 +399,6 @@ class Screen:
                     # Map blit only
                     self.radbmp.blit(self.submap, (0, 0))
 
-
             if self.swgrid and not self.swnavdisp:
                 # ------Draw lat/lon grid------
                 ngrad = int(self.lon1 - self.lon0)
@@ -425,7 +422,7 @@ class Screen:
                     pg.draw.line(self.radbmp, lightgreygreen, \
                                  (0, y), (self.width, y))
 
-            #------ Draw coastlines ------
+            # ------ Draw coastlines ------
             if self.swgeo:
                 # cx,cy = -1,-1
                 geosel = (self.lat0, self.lon0, self.lat1, self.lon1)
@@ -444,7 +441,7 @@ class Screen:
                     pg.draw.line(self.radbmp, grey, (self.cx0[i], self.cy0[i]), \
                                  (self.cx1[i], self.cy1[i]))
 
-            #------ Draw FIRs ------
+            # ------ Draw FIRs ------
             if self.swfir:
                 self.firx0, self.firy0 = self.ll2xy(bs.navdb.firlat0, \
                                                     bs.navdb.firlon0)
@@ -484,12 +481,11 @@ class Screen:
                 self.aptsel = []
                 for i in self.apinside:
                     if self.apsw == 2 or (self.apsw == 1 and \
-                                                      bs.navdb.aptmaxrwy[i] > 1000.):
+                                          bs.navdb.aptmaxrwy[i] > 1000.):
                         self.aptsel.append(i)
                 self.aptx, self.apty = self.ll2xy(bs.navdb.aptlat, bs.navdb.aptlon)
 
-
-            #------- Draw waypoints -------
+            # ------- Draw waypoints -------
             if self.wpsw > 0:
                 # print len(self.wptsel)," waypoints"
                 if len(self.wptsel) < self.maxnrwp:
@@ -520,7 +516,7 @@ class Screen:
                             # self.fontnav.printat(self.radbmp,xtxt,ytxt, \
                             #     bs.navdb.wpid[i])
 
-            #------- Draw airports -------
+            # ------- Draw airports -------
             if self.apsw > 0:
                 # if len(self.aptsel)<800:
                 aptrect = self.aptsymbol.get_rect()
@@ -549,8 +545,7 @@ class Screen:
                     # self.fontnav.printat(self.radbmp,xtxt,ytxt, \
                     #     bs.navdb.aptid[i])
 
-
-            #---------- Draw background trails ----------
+            # ---------- Draw background trails ----------
             if bs.traf.trails.active:
                 bs.traf.trails.buffer()  # move all new trails to background
 
@@ -565,60 +560,60 @@ class Screen:
                     pg.draw.aaline(self.radbmp, bs.traf.trails.bgcol[i], \
                                    (x0[i], y0[i]), (x1[i], y1[i]))
 
-            #---------- Draw ADSB Coverage Area
+            # ---------- Draw ADSB Coverage Area
             if self.swAdsbCoverage:
                 # These points are based on the positions of the antennas with range = 200km
-                adsbCoverageLat = [53.7863,53.5362,52.8604,51.9538,51.2285,50.8249,50.7382,
-                                   50.9701,51.6096,52.498,53.4047,53.6402]
-                adsbCoverageLon = [4.3757,5.8869,6.9529,7.2913,6.9312,6.251,5.7218,4.2955,
-                                   3.2162,2.7701,3.1117,3.4891]
+                adsbCoverageLat = [53.7863, 53.5362, 52.8604, 51.9538, 51.2285, 50.8249, 50.7382,
+                                   50.9701, 51.6096, 52.498, 53.4047, 53.6402]
+                adsbCoverageLon = [4.3757, 5.8869, 6.9529, 7.2913, 6.9312, 6.251, 5.7218, 4.2955,
+                                   3.2162, 2.7701, 3.1117, 3.4891]
 
-                for i in range(0,len(adsbCoverageLat)):
-                    if i == len(adsbCoverageLat)-1:
-                        x0, y0 = self.ll2xy(adsbCoverageLat[i],adsbCoverageLon[i])
-                        x1, y1 = self.ll2xy(adsbCoverageLat[0],adsbCoverageLon[0])
+                for i in range(0, len(adsbCoverageLat)):
+                    if i == len(adsbCoverageLat) - 1:
+                        x0, y0 = self.ll2xy(adsbCoverageLat[i], adsbCoverageLon[i])
+                        x1, y1 = self.ll2xy(adsbCoverageLat[0], adsbCoverageLon[0])
 
                     else:
-                        x0, y0 = self.ll2xy(adsbCoverageLat[i],adsbCoverageLon[i])
-                        x1, y1 = self.ll2xy(adsbCoverageLat[i+1],adsbCoverageLon[i+1])
+                        x0, y0 = self.ll2xy(adsbCoverageLat[i], adsbCoverageLon[i])
+                        x1, y1 = self.ll2xy(adsbCoverageLat[i + 1], adsbCoverageLon[i + 1])
 
-                    pg.draw.line(self.radbmp, red,(x0, y0), (x1, y1))
+                    pg.draw.line(self.radbmp, red, (x0, y0), (x1, y1))
 
             # User defined objects
             for i in range(len(self.objtype)):
 
                 # Draw LINE or POLYGON with objdata = [lat0,lon,lat1,lon1,lat2,lon2,..]
-                if self.objtype[i]=='LINE' or self.objtype[i]=="POLY" or self.objtype[i]=="POLYLINE":
-                    npoints = int(len(self.objdata[i])/2)
+                if self.objtype[i] == 'LINE' or self.objtype[i] == "POLY" or self.objtype[i] == "POLYLINE":
+                    npoints = int(len(self.objdata[i]) / 2)
                     print(npoints)
-                    x0,y0 = self.ll2xy(self.objdata[i][0],self.objdata[i][1])
-                    for j in range(1,npoints):
-                        x1,y1 = self.ll2xy(self.objdata[i][j*2],self.objdata[i][j*2+1])
-                        pg.draw.line(self.radbmp,self.objcolor[i],(x0, y0), (x1, y1))
-                        x0,y0 = x1,y1
+                    x0, y0 = self.ll2xy(self.objdata[i][0], self.objdata[i][1])
+                    for j in range(1, npoints):
+                        x1, y1 = self.ll2xy(self.objdata[i][j * 2], self.objdata[i][j * 2 + 1])
+                        pg.draw.line(self.radbmp, self.objcolor[i], (x0, y0), (x1, y1))
+                        x0, y0 = x1, y1
 
-                    if self.objtype[i]=="POLY":
-                        x1,y1 = self.ll2xy(self.objdata[i][0],self.objdata[i][1])
-                        pg.draw.line(self.radbmp,self.objcolor[i],(x0, y0), (x1, y1))
+                    if self.objtype[i] == "POLY":
+                        x1, y1 = self.ll2xy(self.objdata[i][0], self.objdata[i][1])
+                        pg.draw.line(self.radbmp, self.objcolor[i], (x0, y0), (x1, y1))
 
                 # Draw bounding box of objdata = [lat0,lon0,lat1,lon1]
-                elif self.objtype[i]=='BOX':
-                    lat0 = min(self.objdata[i][0],self.objdata[i][2])
-                    lon0 = min(self.objdata[i][1],self.objdata[i][3])
-                    lat1 = max(self.objdata[i][0],self.objdata[i][2])
-                    lon1 = max(self.objdata[i][1],self.objdata[i][3])
+                elif self.objtype[i] == 'BOX':
+                    lat0 = min(self.objdata[i][0], self.objdata[i][2])
+                    lon0 = min(self.objdata[i][1], self.objdata[i][3])
+                    lat1 = max(self.objdata[i][0], self.objdata[i][2])
+                    lon1 = max(self.objdata[i][1], self.objdata[i][3])
 
-                    x0,y0 = self.ll2xy(lat1,lon0)
-                    x1,y1 = self.ll2xy(lat0,lon1)
-                    pg.draw.rect(self.radbmp,self.objcolor[i],pg.Rect(x0, y0, x1-x0, y1-y0),1)
+                    x0, y0 = self.ll2xy(lat1, lon0)
+                    x1, y1 = self.ll2xy(lat0, lon1)
+                    pg.draw.rect(self.radbmp, self.objcolor[i], pg.Rect(x0, y0, x1 - x0, y1 - y0), 1)
 
                 # Draw circle with objdata = [latcenter,loncenter,radiusnm]
-                elif self.objtype[i]=='CIRCLE':
+                elif self.objtype[i] == 'CIRCLE':
                     pass
-                    xm,ym     = self.ll2xy(self.objdata[i][0],self.objdata[i][1])
-                    xtop,ytop = self.ll2xy(self.objdata[i][0]+self.objdata[i][2]/60.,self.objdata[i][1])
-                    radius    = int(round(abs(ytop-ym)))
-                    pg.draw.circle(self.radbmp, self.objcolor[i], (int(xm),int(ym)), radius, 1)
+                    xm, ym = self.ll2xy(self.objdata[i][0], self.objdata[i][1])
+                    xtop, ytop = self.ll2xy(self.objdata[i][0] + self.objdata[i][2] / 60., self.objdata[i][1])
+                    radius = int(round(abs(ytop - ym)))
+                    pg.draw.circle(self.radbmp, self.objcolor[i], (int(xm), int(ym)), radius, 1)
 
             # Reset background drawing switch
             self.redrawradbg = False
@@ -637,7 +632,6 @@ class Screen:
         if redrawrad:
             self.radt0 = syst  # Update lats drawing time of radar
 
-
             # Select which aircraft are within screen area
             trafsel = np.where((bs.traf.lat > self.lat0) * (bs.traf.lat < self.lat1) * \
                                (bs.traf.lon > self.lon0) * (bs.traf.lon < self.lon1))[0]
@@ -646,7 +640,7 @@ class Screen:
             # Convert lat,lon to x,y
 
             trafx, trafy = self.ll2xy(bs.traf.lat, bs.traf.lon)
-            trafy -= bs.traf.alt*self.isoalt
+            trafy -= bs.traf.alt * self.isoalt
 
             if bs.traf.trails.active:
                 ltx, lty = self.ll2xy(bs.traf.trails.lastlat, bs.traf.trails.lastlon)
@@ -668,21 +662,21 @@ class Screen:
                 dy = int(self.fontrad.linedy * 7 / 6)
 
                 # Draw aircraft altitude line
-                if self.isoalt>1e-7:
-                    pg.draw.line(self.win,white,(int(trafx[i]),int(trafy[i])),(int(trafx[i]),int(trafy[i]+bs.traf.alt[i]*self.isoalt)))
+                if self.isoalt > 1e-7:
+                    pg.draw.line(self.win, white, (int(trafx[i]), int(trafy[i])),
+                                 (int(trafx[i]), int(trafy[i] + bs.traf.alt[i] * self.isoalt)))
 
                 # Normal symbol if no conflict else amber
-                toosmall=self.lat1-self.lat0>6 #don't draw circles if zoomed out too much
+                toosmall = self.lat1 - self.lat0 > 6  # don't draw circles if zoomed out too much
 
                 if not bs.traf.cd.inconf[i]:
                     self.win.blit(self.acsymbol[isymb], pos)
                     if self.swsep and not toosmall:
-                        pg.draw.circle(self.win,green,(int(trafx[i]),int(trafy[i])),pixelrad,1)
+                        pg.draw.circle(self.win, green, (int(trafx[i]), int(trafy[i])), pixelrad, 1)
                 else:
                     self.win.blit(self.ambacsymbol[isymb], pos)
                     if self.swsep and not toosmall:
-                        pg.draw.circle(self.win,amber,(int(trafx[i]),int(trafy[i])),pixelrad,1)
-
+                        pg.draw.circle(self.win, amber, (int(trafx[i]), int(trafy[i])), pixelrad, 1)
 
                 # Draw last trail part
                 if bs.traf.trails.active:
@@ -696,8 +690,8 @@ class Screen:
                 else:
                     label.append(" ")
                 if self.swlabel > 1:
-                    if bs.traf.alt[i]>bs.traf.translvl:
-                        label.append("FL"+str(int(round(bs.traf.alt[i] / (100.*ft)))))  # Line 2 of label: altitude
+                    if bs.traf.alt[i] > bs.traf.translvl:
+                        label.append("FL" + str(int(round(bs.traf.alt[i] / (100. * ft)))))  # Line 2 of label: altitude
                     else:
                         label.append(str(int(round(bs.traf.alt[i] / ft))))  # Line 2 of label: altitude
                 else:
@@ -708,10 +702,9 @@ class Screen:
                 else:
                     label.append(" ")
 
-
                 # Check for changes in traffic label text
-                if  not (type(bs.traf.label[i])==list) or \
-                      not (type(bs.traf.label[i][3])==str) or \
+                if not (type(bs.traf.label[i]) == list) or \
+                        not (type(bs.traf.label[i][3]) == str) or \
                         not (label[:3] == bs.traf.label[i][:3]):
 
                     bs.traf.label[i] = []
@@ -740,52 +733,51 @@ class Screen:
                 if self.swspd:
                     # just a nominal length: a speed of 150 kts will be displayed
                     # as an arrow of 30 pixels long on screen
-                    nomlength    = 30
-                    nomspeed     = 150.
+                    nomlength = 30
+                    nomspeed = 150.
 
-                    vectorlength = float(nomlength)*bs.traf.tas[i]/nomspeed
+                    vectorlength = float(nomlength) * bs.traf.tas[i] / nomspeed
 
                     spdvcx = trafx[i] + np.sin(np.radians(bs.traf.trk[i])) * vectorlength
                     spdvcy = trafy[i] - np.cos(np.radians(bs.traf.trk[i])) * vectorlength \
-                                - bs.traf.vs[i]/nomspeed*nomlength*self.isoalt /   \
-                                            self.dtopix_eq(1e5)*1e5
+                             - bs.traf.vs[i] / nomspeed * nomlength * self.isoalt / \
+                             self.dtopix_eq(1e5) * 1e5
 
-                    pg.draw.line(self.win,green,(trafx[i],trafy[i]),(spdvcx,spdvcy))
+                    pg.draw.line(self.win, green, (trafx[i], trafy[i]), (spdvcx, spdvcy))
 
             # ---- End of per aircraft i loop
-
 
             # Draw conflicts: line from a/c to closest point of approach
             nconf = len(bs.traf.cd.confpairs_unique)
             n2conf = len(bs.traf.cd.confpairs)
 
-            if nconf>0:
+            if nconf > 0:
 
                 for j in range(n2conf):
                     i = bs.traf.id2idx(bs.traf.cd.confpairs[j][0])
-                    if i>=0 and i<bs.traf.ntraf and (i in trafsel):
+                    if i >= 0 and i < bs.traf.ntraf and (i in trafsel):
                         latcpa, loncpa = geo.kwikpos(bs.traf.lat[i], bs.traf.lon[i], \
-                                                    bs.traf.trk[i], bs.traf.cd.tcpamax[j] * bs.traf.gs[i] / nm)
-                        altcpa = bs.traf.lat[i] + bs.traf.vs[i]*bs.traf.cd.tcpamax[j]
-                        xc, yc = self.ll2xy(latcpa,loncpa)
+                                                     bs.traf.trk[i], bs.traf.cd.tcpamax[j] * bs.traf.gs[i] / nm)
+                        altcpa = bs.traf.lat[i] + bs.traf.vs[i] * bs.traf.cd.tcpamax[j]
+                        xc, yc = self.ll2xy(latcpa, loncpa)
                         yc = yc - altcpa * self.isoalt
-                        pg.draw.line(self.win,amber,(xc,yc),(trafx[i],trafy[i]))
+                        pg.draw.line(self.win, amber, (xc, yc), (trafx[i], trafy[i]))
 
             # Draw selected route:
             if self.acidrte != "":
                 i = bs.traf.id2idx(self.acidrte)
                 if i >= 0:
-                    for j in range(0,bs.traf.ap.route[i].nwp):
-                        if j==0:
-                            x1,y1 = self.ll2xy(bs.traf.ap.route[i].wplat[j], \
-                                               bs.traf.ap.route[i].wplon[j])
+                    for j in range(0, bs.traf.ap.route[i].nwp):
+                        if j == 0:
+                            x1, y1 = self.ll2xy(bs.traf.ap.route[i].wplat[j], \
+                                                bs.traf.ap.route[i].wplon[j])
                         else:
-                            x0,y0 = x1,y1
-                            x1,y1 = self.ll2xy(bs.traf.ap.route[i].wplat[j], \
-                                               bs.traf.ap.route[i].wplon[j])
-                            pg.draw.line(self.win, magenta,(x0,y0),(x1,y1))
+                            x0, y0 = x1, y1
+                            x1, y1 = self.ll2xy(bs.traf.ap.route[i].wplat[j], \
+                                                bs.traf.ap.route[i].wplon[j])
+                            pg.draw.line(self.win, magenta, (x0, y0), (x1, y1))
 
-                        if j>=len(self.rtewpid) or not self.rtewpid[j]== bs.traf.ap.route[i].wpname[j]:
+                        if j >= len(self.rtewpid) or not self.rtewpid[j] == bs.traf.ap.route[i].wpname[j]:
                             # Waypoint name labels
                             # If waypoint label bitmap does not yet exist, make it
 
@@ -795,33 +787,33 @@ class Screen:
                             alt = bs.traf.ap.route[i].wpalt[j]
                             spd = bs.traf.ap.route[i].wpspd[j]
 
-                            if alt>=0. or spd >=0.:
+                            if alt >= 0. or spd >= 0.:
                                 # Altitude
                                 if alt < 0:
                                     txt = txt + " -----/"
 
                                 elif alt > 4500 * ft:
-                                    FL = int(round((alt/(100.*ft))))
-                                    txt = txt+" FL"+str(FL)+"/"
+                                    FL = int(round((alt / (100. * ft))))
+                                    txt = txt + " FL" + str(FL) + "/"
 
                                 else:
-                                    txt = txt+" "+str(int(round(alt / ft))) + "/"
+                                    txt = txt + " " + str(int(round(alt / ft))) + "/"
 
                                 # Speed
                                 if spd < 0:
-                                    txt = txt+"---"
+                                    txt = txt + "---"
                                 else:
-                                    txt = txt+str(int(round(spd / kts)))
+                                    txt = txt + str(int(round(spd / kts)))
 
                             wplabel = pg.Surface((128, 32), 0, self.win)
                             self.fontnav.printat(wplabel, 0, 0, \
                                                  txt)
 
-                            if j>=len(self.rtewpid):
+                            if j >= len(self.rtewpid):
                                 self.rtewpid.append(txt)
                                 self.rtewplabel.append(wplabel)
                             else:
-                                self.rtewpid[j]    = txt
+                                self.rtewpid[j] = txt
                                 self.rtewplabel[j] = wplabel
 
                         # In any case, blit the waypoint name
@@ -832,10 +824,8 @@ class Screen:
 
                         # Line from aircraft to active waypoint
                         if bs.traf.ap.route[i].iactwp == j:
-                            x0,y0 = self.ll2xy(bs.traf.lat[i],bs.traf.lon[i])
-                            pg.draw.line(self.win, magenta,(x0,y0),(x1,y1))
-
-
+                            x0, y0 = self.ll2xy(bs.traf.lat[i], bs.traf.lon[i])
+                            pg.draw.line(self.win, magenta, (x0, y0), (x1, y1))
 
             # Draw aircraft trails which are on screen
             if bs.traf.trails.active:
@@ -859,7 +849,7 @@ class Screen:
 
         if self.redrawradbg or redrawrad or self.editwin.redraw:
             self.win.blit(self.menu.bmps[self.menu.ipage], \
-                           (self.menu.x, self.menu.y))
+                          (self.menu.x, self.menu.y))
             self.win.blit(self.editwin.bmp, (self.editwin.winx, self.editwin.winy))
 
             # Draw frames
@@ -869,18 +859,18 @@ class Screen:
             # Add debug line
             self.fontsys.printat(self.win, 10, 2, str(bs.sim.utc.replace(microsecond=0)))
             self.fontsys.printat(self.win, 10, 18, tim2txt(bs.sim.simt))
-            self.fontsys.printat(self.win, 10+80, 2, \
+            self.fontsys.printat(self.win, 10 + 80, 2, \
                                  "ntraf = " + str(bs.traf.ntraf))
-            self.fontsys.printat(self.win, 10+160, 2, \
+            self.fontsys.printat(self.win, 10 + 160, 2, \
                                  "Freq=" + str(int(len(self.dts) / max(0.001, sum(self.dts)))))
 
-            self.fontsys.printat(self.win, 10+240, 2, \
+            self.fontsys.printat(self.win, 10 + 240, 2, \
                                  "#LOS      = " + str(len(bs.traf.cd.lospairs_unique)))
-            self.fontsys.printat(self.win, 10+240, 18, \
+            self.fontsys.printat(self.win, 10 + 240, 18, \
                                  "Total LOS = " + str(len(bs.traf.cd.lospairs_all)))
-            self.fontsys.printat(self.win, 10+240, 34, \
+            self.fontsys.printat(self.win, 10 + 240, 34, \
                                  "#Con      = " + str(len(bs.traf.cd.confpairs_unique)))
-            self.fontsys.printat(self.win, 10+240, 50, \
+            self.fontsys.printat(self.win, 10 + 240, 50, \
                                  "Total Con = " + str(len(bs.traf.cd.confpairs_all)))
 
             # Frame ready, flip to screen
@@ -888,10 +878,9 @@ class Screen:
 
             # If needed, take a screenshot
             if self.screenshot:
-                pg.image.save(self.win,self.screenshotname)
-                self.screenshot=False
+                pg.image.save(self.win, self.screenshotname)
+                self.screenshot = False
         return
-
 
     def ll2xy(self, lat, lon):
         if not self.swnavdisp:
@@ -919,7 +908,6 @@ class Screen:
 
         return np.rint(x), np.rint(y)
 
-
     def xy2ll(self, x, y):
         lat = self.lat0 + (self.lat1 - self.lat0) * (self.height - y) / self.height
 
@@ -935,7 +923,6 @@ class Screen:
 
         # Convert pixel x,y to lat/lan [deg]
         return lat, lon
-
 
     def onradar(self, lat, lon):
         """Return boolean (also numpy array) with on or off radar screen (range check)"""
@@ -959,21 +946,18 @@ class Screen:
 
         return sw
 
-
-
-    def zoom(self, factor, absolute = False):
+    def zoom(self, factor, absolute=False):
         """Zoom function"""
         oldvalues = self.lat0, self.lat1, self.lon0, self.lon1
-
 
         # Zoom factor: 2.0 means halving the display size in degrees lat/lon
         # ZOom out with e.g. 0.5
 
         ctrlat = (self.lat0 + self.lat1) / 2.
         if not absolute:
-             dellat2 = 0.5*(self.lat1 - self.lat0) / factor
+            dellat2 = 0.5 * (self.lat1 - self.lat0) / factor
         else:
-             dellat2 = 1.0/factor
+            dellat2 = 1.0 / factor
 
         self.lat0 = ctrlat - dellat2
         self.lat1 = ctrlat + dellat2
@@ -989,8 +973,8 @@ class Screen:
             dellon2 = (360. + self.lon1 - self.lon0) / 2. / factor
 
         if absolute:
-            dellon2 = dellat2 * self.width /    \
-                (self.height * cos(radians(ctrlat)))
+            dellon2 = dellat2 * self.width / \
+                      (self.height * cos(radians(ctrlat)))
 
         # Wrap around
         self.lon0 = (ctrlon - dellon2 + 180.) % 360. - 180.
@@ -1012,7 +996,7 @@ class Screen:
                absolute: lat,lon;
                relative: ABOVE/DOWN/LEFT/RIGHT"""
         lat, lon = self.ctrlat, self.ctrlon
-        if type(args[0])==str:
+        if type(args[0]) == str:
             if args[0].upper() == "LEFT":
                 lon = lon - 0.5 * (self.lon1 - self.lon0)
             elif args[0].upper() == "RIGHT":
@@ -1022,21 +1006,21 @@ class Screen:
             elif args[0].upper() == "DOWN":
                 lat = lat - 0.5 * (self.lat1 - self.lat0)
             else:
-                i = bs.navdb.getwpidx(args[0],self.ctrlat,self.ctrlon)
-                if i<0:
-                    i = bs.navdb.getaptidx(args[0],self.ctrlat,self.ctrlon)
-                    if i>0:
+                i = bs.navdb.getwpidx(args[0], self.ctrlat, self.ctrlon)
+                if i < 0:
+                    i = bs.navdb.getaptidx(args[0], self.ctrlat, self.ctrlon)
+                    if i > 0:
                         lat = bs.navdb.aptlat[i]
                         lon = bs.navdb.aptlon[i]
                 else:
                     lat = bs.navdb.wplat[i]
                     lon = bs.navdb.wplon[i]
 
-                if i<0:
-                    return False,args[0]+"not found."
+                if i < 0:
+                    return False, args[0] + "not found."
 
         else:
-            if len(args)>1:
+            if len(args) > 1:
                 lat, lon = args[:2]
             else:
                 return False
@@ -1046,8 +1030,8 @@ class Screen:
         self.ctrlat = max(min(lat, 90. - dellat2), dellat2 - 90.)
 
         # Allow wrap around of longitude
-        dellon2 = dellat2 * self.width /   \
-                                    (self.height * cos(radians(self.ctrlat)))
+        dellon2 = dellat2 * self.width / \
+                  (self.height * cos(radians(self.ctrlat)))
         self.ctrlon = (lon + 180.) % 360 - 180.
 
         # Update edge coordinates
@@ -1068,7 +1052,6 @@ class Screen:
         # print "dellon2 =",dellon2
 
         return True
-
 
     def fullscreen(self, switch):  # full screen switch
         """Switch to (True) /from (False) full screen mode"""
@@ -1118,39 +1101,37 @@ class Screen:
 
     def savescreen(self):
         """Save a screenshoot"""
-        now=datetime.datetime.now()
-        date="%s-%s-%s" % (now.year, now.month, now.day)
-        time="time=%sh %sm %ss" % (now.hour, now.minute, now.second)
-        num=1
+        now = datetime.datetime.now()
+        date = "%s-%s-%s" % (now.year, now.month, now.day)
+        time = "time=%sh %sm %ss" % (now.hour, now.minute, now.second)
+        num = 1
         while self.session == "new":
-            self.folder="./screenshots/"+date+"-session-"+str(num)
+            self.folder = "./screenshots/" + date + "-session-" + str(num)
             if os.path.exists(self.folder):
-                num+=1
+                num += 1
             else:
                 os.makedirs(self.folder)
-                self.session=num
-        self.screenshotname=self.folder+"/"+time+".bmp"
-        self.screenshot=True
+                self.session = num
+        self.screenshotname = self.folder + "/" + time + ".bmp"
+        self.screenshot = True
 
-
-    def ltopix_eq(self,lat):
+    def ltopix_eq(self, lat):
         """
         Latitude to pixel conversion. Compute how much pixels a
         degree in latlon is in longitudinal direction.
         """
 
-        pwidth=self.width
-        lwidth=self.lon1-self.lon0
+        pwidth = self.width
+        lwidth = self.lon1 - self.lon0
 
-        return int(lat/lwidth*pwidth)
+        return int(lat / lwidth * pwidth)
 
-
-    def dtopix_eq(self,dist):
+    def dtopix_eq(self, dist):
         """
         Distance to pixel conversion. Compute how much pixels a
         meter is in longitudinal direction
         """
-        lat=dist/111319.
+        lat = dist / 111319.
         return self.ltopix_eq(lat)
 
     def color(self, name, r, g, b):
@@ -1164,20 +1145,18 @@ class Screen:
         self.redrawradbg = True  # redraw background
         return True
 
-    def objappend(self,itype,name,data):
+    def objappend(self, itype, name, data):
         """Add user defined objects"""
         if data is None:
             return self.objdel()
 
-
         self.objname.append(name)
         self.objtype.append(itype)
-        if self.objtype[-1]==1:
-            self.objtype[-1]="LINE" # Convert to string
+        if self.objtype[-1] == 1:
+            self.objtype[-1] = "LINE"  # Convert to string
 
         self.objcolor.append(cyan)
         self.objdata.append(data)
-
 
         self.redrawradbg = True  # redraw background
 
@@ -1185,10 +1164,10 @@ class Screen:
 
     def objdel(self):
         """Add user defined objects"""
-        self.objname     = []
-        self.objtype     = []
-        self.objcolor    = []
-        self.objdata     = []
+        self.objname = []
+        self.objtype = []
+        self.objcolor = []
+        self.objdata = []
         self.redrawradbg = True  # redraw background
         return
 
@@ -1199,28 +1178,27 @@ class Screen:
             self.acidrte = acid  # Show this route
         return True
 
-
-    def addnavwpt(self,name,lat,lon): # Draw new navdb waypoint
+    def addnavwpt(self, name, lat, lon):  # Draw new navdb waypoint
         # As in pygame navdb has already updated data, simply redraw background
-        self.wpswbmp.append(False) # Add cell to buffer
-        self.wplabel.append(0) # Add cell to buffer
+        self.wpswbmp.append(False)  # Add cell to buffer
+        self.wplabel.append(0)  # Add cell to buffer
         self.redrawradbg = True  # redraw background
         return
 
     def getviewctr(self):
         return (self.ctrlat, self.ctrlon)
 
-    def getviewbounds(self): # Return current viewing area in lat, lon
+    def getviewbounds(self):  # Return current viewing area in lat, lon
         return self.lat0, self.lat1, self.lon0, self.lon1
 
-    def drawradbg(self): # redraw radar background
+    def drawradbg(self):  # redraw radar background
         self.redrawradbg = True
         return
 
     def filteralt(self, *args):
         return False, 'Filteralt not implemented in Pygame gui'
 
-    def feature(self,sw,arg=""):
+    def feature(self, sw, arg=""):
         # Switch/toggle/cycle radar screen features e.g. from SWRAD command
         # Coastlines
         if sw == "GEO":
@@ -1234,14 +1212,14 @@ class Screen:
         # Airport: 0 = None, 1 = Large, 2= All
         elif sw == "APT":
             self.apsw = (self.apsw + 1) % 3
-            if not (arg== ""):
+            if not (arg == ""):
                 self.apsw = int(cmdargs[2])
             self.navsel = []
 
         # Waypoint: 0 = None, 1 = VOR, 2 = also WPT, 3 = Also terminal area wpts
         elif sw == "VOR" or sw == "WPT" or sw == "WP" or sw == "NAV":
             self.wpsw = (self.wpsw + 1) % 4
-            if not (arg== ""):
+            if not (arg == ""):
                 self.wpsw = int(arg)
             self.navsel = []
 
@@ -1260,13 +1238,14 @@ class Screen:
 
         else:
             self.redrawradbg = False
-            return False # switch not found
+            return False  # switch not found
 
         self.redrawradbg = True
-        return True # Success
+        return True  # Success
 
     def show_file_dialog(self):
         return opendialog()
+
     def symbol(self):
         self.swsep = not self.swsep
         return True
@@ -1277,16 +1256,16 @@ class Screen:
             cmd = 'Command-Reference'
         curdir = os.getcwd()
         os.chdir("data/html")
-        htmlfile = cmd.lower()+".html"
+        htmlfile = cmd.lower() + ".html"
         if os.path.isfile(htmlfile):
             try:
-                subprocess.Popen(htmlfile,shell=True)
+                subprocess.Popen(htmlfile, shell=True)
             except:
                 os.chdir(curdir)
-                return False,"Opening "+htmlfile+" failed."
+                return False, "Opening " + htmlfile + " failed."
         else:
             os.chdir(curdir)
-            return False,htmlfile+" is not yet available, try HELP PDF or check the wiki on Github."
+            return False, htmlfile + " is not yet available, try HELP PDF or check the wiki on Github."
 
         os.chdir(curdir)
-        return True,"HTML window opened"
+        return True, "HTML window opened"

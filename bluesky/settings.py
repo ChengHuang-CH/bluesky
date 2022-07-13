@@ -1,5 +1,6 @@
 '''BlueSky global configuration module'''
 import re
+import os
 import sys
 import shutil
 import inspect
@@ -109,7 +110,7 @@ def init(cfgfile=''):
     for d in (outdir, cachedir):
         if not d.is_dir():
             print('Creating directory "%s"' % d)
-            d.mkdir()
+            os.makedirs(d)
     for d in [(badasrc, badadir), (scnsrc, scndir), (plgsrc, plgdir)]:
         if not d[1].is_dir():
             print('Creating directory "%s", and copying default files' % d[1])

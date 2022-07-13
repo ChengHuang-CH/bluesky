@@ -17,6 +17,7 @@ class Keyboard:
 
     Created by  : Jacco M. Hoekstra (TU Delft)
     """
+
     def __init__(self):
 
         self.dragedit = False  # Edit window initially not connected to mouse
@@ -24,7 +25,7 @@ class Keyboard:
         self.dragmenu = False
         self.dragdx = 0
         self.dragdy = 0
-        self.lastcmd  = ""     # previously typed command line
+        self.lastcmd = ""  # previously typed command line
         self.firstx = True
         return
 
@@ -37,52 +38,52 @@ class Keyboard:
 
         # Get events
         for event in pg.event.get():
-            if event.type==pg.QUIT:
+            if event.type == pg.QUIT:
                 bs.sim.stop()
 
-            elif event.type==pg.KEYDOWN:
+            elif event.type == pg.KEYDOWN:
 
                 # Alphanumeric key
-                if event.key>31 and event.key<127:
-                    bs.scr.editwin.insert(str(event.unicode))  #.upper())
+                if event.key > 31 and event.key < 127:
+                    bs.scr.editwin.insert(str(event.unicode))  # .upper())
 
-                elif event.key==13: # ENTER
+                elif event.key == 13:  # ENTER
                     cmdline = bs.scr.editwin.getline()
                     bs.scr.editwin.enter()
-                    if len(cmdline)>0:
+                    if len(cmdline) > 0:
                         self.lastcmd = cmdline
                         stack.stack(cmdline)
 
-                elif event.key==8:   # BACKSPACE
+                elif event.key == 8:  # BACKSPACE
                     bs.scr.editwin.backspace()
 
-                elif event.key==27: # ESCAPE
+                elif event.key == 27:  # ESCAPE
                     bs.sim.stop()
 
-                elif event.key ==pg.K_F3: # F3: Insert last command
-                    bs.scr.editwin.insert(self.lastcmd.strip()+" ") # strip().upper()+" ")
+                elif event.key == pg.K_F3:  # F3: Insert last command
+                    bs.scr.editwin.insert(self.lastcmd.strip() + " ")  # strip().upper()+" ")
 
                 # Display keys
-                elif event.key == 269: # Num lock minus
+                elif event.key == 269:  # Num lock minus
                     stack.stack("ZOOM OUT")
-                elif event.key == 270: # Num lock pluus
+                elif event.key == 270:  # Num lock pluus
                     stack.stack("ZOOM IN")
 
-                elif event.key == 273: # Cursor up
+                elif event.key == pg.K_UP:  # Cursor up
                     bs.scr.pan("ABOVE")
-                elif event.key == 274: # Cursor down
+                elif event.key == pg.K_DOWN:  # Cursor down
                     bs.scr.pan("DOWN")
-                elif event.key == 275: # Num lock down
+                elif event.key == pg.K_RIGHT:  # Num lock down
                     bs.scr.pan("RIGHT")
-                elif event.key == 276: # Num lock right
+                elif event.key == pg.K_LEFT:  # Num lock right
                     bs.scr.pan("LEFT")
 
-                elif event.key ==pg.K_F11: # F11: Toggle full screen
+                elif event.key == pg.K_F11:  # F11: Toggle full screen
 
                     bs.scr.swfullscreen = not bs.scr.swfullscreen
                     bs.scr.fullscreen(bs.scr.swfullscreen)
 
-                else: #TEST OPTION
+                else:  # TEST OPTION
                     pass
 
                 # bs.scr.editwin.insert(str(event.key))
@@ -91,36 +92,35 @@ class Keyboard:
 
             # End of keys selection
 
-
             # Mouse events:
             #    MOUSEMOTION      pos, rel, buttons
             #    MOUSEBUTTONUP    pos, button
             #    MOUSEBUTTONDOWN  pos, button
 
             # Mouse button 1 release: enter value in edit line
-            elif event.type==pg.MOUSEBUTTONUP:
+            elif event.type == pg.MOUSEBUTTONUP:
 
                 # Reselase edit window if necessary
-                if event.button==1:
+                if event.button == 1:
                     if self.dragedit:
-                        bs.scr.editwin.winx = event.pos[0]-self.dragdx
-                        bs.scr.editwin.winy = event.pos[1]-self.dragdy
-                        bs.scr.editwin.winy = bs.scr.editwin.fontedit.linedy *       \
-                              (bs.scr.editwin.winy/bs.scr.editwin.fontedit.linedy)
-                        bs.scr.editwin.rect = pg.Rect(bs.scr.editwin.winx,bs.scr.editwin.winy, \
-                             bs.scr.editwin.bmpdx,bs.scr.editwin.bmpdy)
+                        bs.scr.editwin.winx = event.pos[0] - self.dragdx
+                        bs.scr.editwin.winy = event.pos[1] - self.dragdy
+                        bs.scr.editwin.winy = bs.scr.editwin.fontedit.linedy * \
+                                              (bs.scr.editwin.winy / bs.scr.editwin.fontedit.linedy)
+                        bs.scr.editwin.rect = pg.Rect(bs.scr.editwin.winx, bs.scr.editwin.winy, \
+                                                      bs.scr.editwin.bmpdx, bs.scr.editwin.bmpdy)
                         bs.scr.redrawedit = True
 
                     # Menu button click
                     elif bs.scr.menu.rect.collidepoint(event.pos) and \
-                         not self.dragmenu:
+                            not self.dragmenu:
                         cmdtxt = bs.scr.menu.getcmd(event.pos)
                         if cmdtxt != "":
                             stack.stack(cmdtxt)
 
                     # In all other cases process as radar click
                     elif self.dragmenu:
-                        self.dragmenu    = False
+                        self.dragmenu = False
                         self.dragpotmenu = False
 
                     else:
@@ -139,72 +139,72 @@ class Keyboard:
                                 stack.stack(tostack)
 
                 # Make sure edit and menu window are released
-                self.dragedit    = False
-                self.dragmenu    = False
+                self.dragedit = False
+                self.dragmenu = False
                 self.dragpotmenu = False
 
             # Mouse button down: lock onto edit window if insied edit window
-            elif event.type==pg.MOUSEBUTTONDOWN:
+            elif event.type == pg.MOUSEBUTTONDOWN:
 
                 self.dragmenu = False
                 self.dragpotmenu = False
 
-                if event.button==1:
+                if event.button == 1:
                     if bs.scr.editwin.rect.collidepoint(event.pos):
                         self.dragedit = True
-                        self.dragdx = event.pos[0]-bs.scr.editwin.winx
-                        self.dragdy = event.pos[1]-bs.scr.editwin.winy
+                        self.dragdx = event.pos[0] - bs.scr.editwin.winx
+                        self.dragdy = event.pos[1] - bs.scr.editwin.winy
                         bs.scr.redrawedit = True
 
                     elif bs.scr.menu.rect.collidepoint(event.pos):
                         self.dragpotmenu = True
-                        self.dragmenu    = False
-                        bs.scr.redrawedit   = True
+                        self.dragmenu = False
+                        bs.scr.redrawedit = True
                         self.dragdx = event.pos[0] - bs.scr.menu.x
                         self.dragdy = event.pos[1] - bs.scr.menu.y
-                elif event.button==4:
+                elif event.button == 4:
                     bs.scr.zoom(sqrt(2.0))
-                elif event.button==5:
-                    bs.scr.zoom(0.5*sqrt(2.0))
+                elif event.button == 5:
+                    bs.scr.zoom(0.5 * sqrt(2.0))
 
             # Mouse motion: drag edit/menu window with mouse, if necessary
             # Check also for mouse button 1
-            elif event.type==pg.MOUSEMOTION and \
-                (self.dragedit or self.dragpotmenu or self.dragmenu):
+            elif event.type == pg.MOUSEMOTION and \
+                    (self.dragedit or self.dragpotmenu or self.dragmenu):
                 if self.dragedit:
                     pressed = pg.mouse.get_pressed()[0]
                     if not pressed:
                         self.dragedit = False
                     else:
-                        bs.scr.editwin.winx = event.pos[0]-self.dragdx
-                        bs.scr.editwin.winy = event.pos[1]-self.dragdy
-                        bs.scr.editwin.rect = pg.Rect(bs.scr.editwin.winx,bs.scr.editwin.winy, \
-                                 bs.scr.editwin.bmpdx,bs.scr.editwin.bmpdy)
+                        bs.scr.editwin.winx = event.pos[0] - self.dragdx
+                        bs.scr.editwin.winy = event.pos[1] - self.dragdy
+                        bs.scr.editwin.rect = pg.Rect(bs.scr.editwin.winx, bs.scr.editwin.winy, \
+                                                      bs.scr.editwin.bmpdx, bs.scr.editwin.bmpdy)
                         bs.scr.redrawedit = True
 
                 elif self.dragpotmenu:
                     pressed = pg.mouse.get_pressed()[0]
-                    if  not pressed:
+                    if not pressed:
                         self.dragpotmenu = False
                         self.dragmenu = False
                     else:
-                        mx,my = pg.mouse.get_pos()
-                        outside = not bs.scr.menu.rect.collidepoint((mx,my))
+                        mx, my = pg.mouse.get_pos()
+                        outside = not bs.scr.menu.rect.collidepoint((mx, my))
                         if outside and pressed:
                             self.dragmenu = True
                             self.dragpotmenu = False
 
                 elif self.dragmenu:
 
-                    mx,my = event.pos
+                    mx, my = event.pos
                     bs.scr.menu.x = mx - self.dragdx
                     bs.scr.menu.y = my - self.dragdy
-                    bs.scr.menu.update() # Update rectangle
+                    bs.scr.menu.update()  # Update rectangle
                     bs.scr.redrawedit = True
                     pressed = pg.mouse.get_pressed()[0]
-                    if  not pressed:
+                    if not pressed:
                         self.dragpotmenu = False
                         self.dragmenu = False
 
-        #----- End of Update -----
+        # ----- End of Update -----
         return
