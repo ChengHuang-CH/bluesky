@@ -23,6 +23,7 @@ class Trails(TrafficArrays):
         self.active = False  # Wether or not to show trails
         self.dt = dttrail    # Resolution of trail pieces in time
         self.pygame = (bs.gui == 'pygame') # Trails are different for pygame
+        self.open3d = (bs.gui == 'open3d')
         self.tcol0 = 60.  # After how many seconds old colour
 
         # This list contains some standard colors
@@ -116,7 +117,7 @@ class Trails(TrafficArrays):
 
         # When a/c is no longer part of trail semgment,
         # it is no longer a/c data => move to the GUI buffer (send or draw)
-        if self.pygame:
+        if self.pygame or self.open3d:
             # Pygame: send to drawing buffer
             self.lat0 = np.concatenate((self.lat0, np.array(lstlat0)))
             self.lon0 = np.concatenate((self.lon0, np.array(lstlon0)))

@@ -4,7 +4,6 @@ from bluesky.core import Signal
 from bluesky import stack
 from bluesky import tools
 
-
 # Constants
 BS_OK = 0
 BS_ARGERR = 1
@@ -42,16 +41,16 @@ def init(mode='sim', configfile=None, scenfile=None, discoverable=False,
     '''
 
     # Argument checking
-    assert mode in ('sim', 'client', 'server'), f'BlueSky init: Unrecognised mode {mode}. '\
-        'Possible modes are sim, client, and server.'
-    assert gui in (None, 'qtgl', 'pygame', 'console'), f'BlueSky init: Unrecognised gui type {gui}. '\
-        'Possible types are qtgl, pygame, and console.'
+    assert mode in ('sim', 'client', 'server'), f'BlueSky init: Unrecognised mode {mode}. ' \
+                                                'Possible modes are sim, client, and server.'
+    assert gui in (None, 'qtgl', 'pygame', 'open3d', 'console'), f'BlueSky init: Unrecognised gui type {gui}. ' \
+                                                                 'Possible types are qtgl, pygame, and console.'
     if discoverable:
         assert mode == 'server', 'BlueSky init: Discoverable can only be set in server mode.'
     if scenfile:
         assert mode != 'client', 'BlueSky init: Scenario file cannot be passed to a client.'
     if gui:
-        assert mode != 'sim' or gui == 'pygame', 'BlueSky init: Gui type shouldn\'t be specified in sim mode.'
+        assert mode != 'sim' or gui == 'pygame' or gui == 'open3d', 'BlueSky init: Gui type shouldn\'t be specified in sim mode.'
     if detached:
         assert mode == 'sim', 'BlueSky init: Detached operation is only available in sim mode.'
 
@@ -84,6 +83,9 @@ def init(mode='sim', configfile=None, scenfile=None, discoverable=False,
         from bluesky.simulation import Simulation
         if gui == 'pygame':
             from bluesky.ui.pygame import Screen
+            from bluesky.network.detached import Node
+        elif gui == 'open3d':
+            from bluesky.ui.open3d import BlueSky3dUI as Screen
             from bluesky.network.detached import Node
         else:
             from bluesky.simulation import ScreenIO as Screen
