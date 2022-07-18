@@ -10,7 +10,6 @@ def main():
     bs.init(gui='open3d')
 
     bs.sim.op()
-    # bs.scr.init()
 
     threading.Thread(target=update).start()
 
@@ -26,20 +25,16 @@ def update():
 
         # ======= # GUI update ========
         # update and draw aircraft trajectories
-        # self.app.post_to_main_thread(self.window, lambda: self._update_next_frame(frame_i))
-        # bs.scr.update()   # GUI update
-
         if bs.scr.is_done:
-            print(f'break the process')
+            print(f'Quit the process')
+            bs.sim.quit()
             break
         else:
             bs.scr.app.post_to_main_thread(bs.scr.window, bs.scr.update)
-
-    bs.sim.quit()
 
 
 if __name__ == '__main__':
     print("   *****   BlueSky Open ATM simulator *****")
     print("Distributed under GNU General Public License v3")
-    # Run mainloop if BlueSky_pygame is called directly
+    # Run mainloop if BlueSky_open3d is called directly
     main()

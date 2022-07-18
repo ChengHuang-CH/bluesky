@@ -103,19 +103,22 @@ class BlueSky3dUI:
         self._panel = gui.Vert()
         self._panel.background_color = o3d.visualization.gui.Color(0.21, 0.22, 0.25, 1.0)
 
-        self.collapse = gui.CollapsableVert("Panel", 1 * self.em, gui.Margins(0, 0, 0, 0))
+        self.collapse = gui.CollapsableVert("Panel", 0.3 * self.em, gui.Margins(0, 0, 0, 0))
 
         # sub-panel: 2d-3d switch
         self.hgrid = gui.Horiz(2)
         self.hgrid.add_child(gui.Label("3D View"))
         self.switch = gui.ToggleSwitch("2D View")
         self.switch.set_on_clicked(self._on_switch)
+        self.switch.is_on = True  # default 2d
+        self._on_switch(is_on=True)  # default 2d
         self.hgrid.add_child(self.switch)
         self.collapse.add_child(self.hgrid)
 
         # sub-panel: bluesky control
         self.tabs = gui.TabControl()
         self.tab1 = gui.Vert()
+        self.tabs.add_tab("Display", self.tab1)
 
         self.checkbox_wpt = gui.Checkbox("WPT")
         self.checkbox_wpt.set_on_checked(self._on_check_wpt)
@@ -129,14 +132,12 @@ class BlueSky3dUI:
         self.checkbox_fir.set_on_checked(self._on_check_fir)
         self.tab1.add_child(self.checkbox_fir)
 
-        self.tabs.add_tab("Display", self.tab1)
-
         self.tab2 = gui.Vert()
         # self.tab2.add_stretch()
         self.tabs.add_tab("Mode", self.tab2)
         self.collapse.add_child(self.tabs)
 
-        # sub-panel: file open
+        # file open
         self._fileedit = gui.TextEdit()
         filedlgbutton = gui.Button("...")
         filedlgbutton.horizontal_padding_em = 0.5
@@ -153,10 +154,28 @@ class BlueSky3dUI:
         # add to the top-level (vertical) layout
         self.tab2.add_child(fileedit_layout)
 
-        # info
+        # sub-panel: uam configuration
+        self.uam_config_tab = gui.TabControl()
+        self.uam_config = gui.Vert()
+        self.uam_config_tab.add_tab("UAM configuration", self.uam_config)
+
+        self.checkbox_osm = gui.Checkbox("Osm")
+        # self.checkbox_osm.set_on_checked(self._on_check_osm)
+        self.uam_config.add_child(self.checkbox_osm)
+
+        self.checkbox_turbulence = gui.Checkbox("Turbulence")
+        # self.checkbox_turbulence.set_on_checked(self._on_check_tur)
+        self.uam_config.add_child(self.checkbox_turbulence)
+
+        self.checkbox_ground = gui.Checkbox("Ground traffic")
+        # self.checkbox_ground.set_on_checked(self._on_check_ground)
+        self.uam_config.add_child(self.checkbox_ground)
+
+        self.collapse.add_child(self.uam_config_tab)
+
+        # sub-panel: info
         self.info_line = gui.TabControl()
         self.info = gui.VGrid(2)
-        # self.info.preferred_width = 15 * self.em
 
         self.info.add_child(gui.Label("UTC"))
         self.utc = gui.Label("00:00:00")
@@ -193,7 +212,7 @@ class BlueSky3dUI:
         self.info_line.add_tab("Info", self.info)
         self.collapse.add_child(self.info_line)
 
-        # console
+        # sub-panel: console
         self.consoleline = gui.TabControl()
         self.console = gui.Vert(3 * self.em)
         self.consoleline.add_tab("Console", self.console)
@@ -242,9 +261,6 @@ class BlueSky3dUI:
 
         self.window.set_on_close(self._on_main_window_closing)
 
-        #
-        self.view3d = True
-
         self.prev_x, self.prev_y = 0, 0
 
         self.wpt_labels = []
@@ -254,6 +270,10 @@ class BlueSky3dUI:
 
         self.fir_lineset = None
         self.poly_set = None
+        self.selected_routes_set = None
+        self.trails_set = None
+        self.bgtrails_set = None
+        self.traverse_wp_labels = []
 
         # User defined background objects
         self.objtype = []
@@ -271,6 +291,11 @@ class BlueSky3dUI:
         self.ndhdg = 0.0
 
         self._create_aircraft_model()
+
+        # Route drawing for which acid? "" =  None
+        self.acidrte = ""
+        self.rtewpid = []
+        self.rtewplabel = []
 
     def _init_coastline(self):
         self.coord_scale = 1000
@@ -314,26 +339,17 @@ class BlueSky3dUI:
         self.xpt, self.ypt = xpt / self.coord_scale, ypt / self.coord_scale
 
     def _create_aircraft_model(self):
-        # aircraft lineset
+        # aircraft LineSet
         #   /\
         #  /  \
         # / __ \
-        points = [[0, 0, 0], [0.1, 0.2, 0], [0.2, 0, 0], [0.1, 0.1, 0]]
-        lines = [[0, 0.1], [0.1, 0.2], [0.2, 0.3], [0.3, 0]]
-        colors_green = [green for _ in range(len(lines))]
-        colors_amber = [amber for _ in range(len(lines))]
-        self.aircraft_model = o3d.geometry.LineSet(
-            points=o3d.utility.Vector3dVector(points),
-            lines=o3d.utility.Vector2iVector(lines),
-        )
-        self.aircraft_amber = o3d.geometry.LineSet(
-            points=o3d.utility.Vector3dVector(points),
-            lines=o3d.utility.Vector2iVector(lines),
-        )
-        self.aircraft_model.colors = o3d.utility.Vector3dVector(colors_green)
-        self.aircraft_amber.colors = o3d.utility.Vector3dVector(colors_amber)
+        self.aircraft_points = [[0, 0, 0], [0.01, 0.02, 0], [0.02, 0, 0], [0.01, 0.01, 0]]
+        self.aircraft_lines = [[0, 1], [1, 2], [2, 3], [3, 0]]
+        self.aircraft_colors_green = [green for _ in range(len(self.aircraft_lines))]
+        self.aircraft_colors_amber = [amber for _ in range(len(self.aircraft_lines))]
 
-        self.aircraft_name_list = []
+        self.aircraft_labels = []
+        self.all_aircraft_lineset = None
 
     def update(self):
         """
@@ -346,20 +362,73 @@ class BlueSky3dUI:
         if len(self.dts) > 20:
             del self.dts[0]
 
+        # ------ reset --------------------
+        # if self.aircraft_name_list:
+        if self.all_aircraft_lineset is not None:  # remove aircraft object
+            self._3d.scene.remove_geometry('all_aircraft')
+            self.all_aircraft_lineset.clear()
+            self.all_aircraft_lineset = None
+
+        if self.selected_routes_set is not None:  # remove selected routes
+            self._3d.scene.remove_geometry('selected_routes')
+            self.selected_routes_set.clear()
+            self.selected_routes_set = None
+
+        for wp_label in self.traverse_wp_labels:  # remove traversed waypoints label of selected routes
+            self._3d.remove_3d_label(wp_label)
+        self.traverse_wp_labels = []
+
+        for aft_label in self.aircraft_labels:  # remove aircraft labels
+            self._3d.remove_3d_label(aft_label)
+        self.aircraft_labels = []
+
+        if self.trails_set is not None:  # remove selected routes
+            self._3d.scene.remove_geometry('draw_trials')
+            self.trails_set.clear()
+            self.trails_set = None
+
+        if self.bgtrails_set is not None:  # remove selected routes
+            self._3d.scene.remove_geometry('draw_bgtrials')
+            self.bgtrails_set.clear()
+            self.bgtrails_set = None
+
         # ---------- Draw background trails ----------
         # if bs.traf.trails.active:
         #     bs.traf.trails.buffer()  # move all new trails to background
+        #
+        #     bglat0 = bs.traf.trails.bglat0.tolist()
+        #     bgtrails_points = []
+        #     bgtrails_lines = []
+        #     bgtrails_colors = []
+        #
+        #     print(len(bs.traf.trails.bglon0), len(bs.traf.trails.bglat0),
+        #           len(bs.traf.trails.bglon1), len(bs.traf.trails.bglat1))
+        #     for i in range(len(bglat0)):
+        #         x0, y0 = self.m(bs.traf.trails.bglon0[i], bs.traf.trails.bglat0[i])
+        #         x1, y1 = self.m(bs.traf.trails.bglon1[i], bs.traf.trails.bglat1[i])
+        #         x0, y0 = x0 / self.coord_scale, y0 / self.coord_scale
+        #         x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
+        #         bgtrails_points.append([x0, y0, 0])
+        #         bgtrails_points.append([x1, y1, 0])
+        #
+        #         bgtrails_colors.append(bs.traf.trails.bgcol[i] / 255)
+        #
+        #     for i_ in range(0, len(bgtrails_points), 2):
+        #         bgtrails_lines.append([i_, i_ + 1])
+        #
+        #     self.bgtrails_set = o3d.geometry.LineSet(
+        #         points=o3d.utility.Vector3dVector(bgtrails_points),
+        #         lines=o3d.utility.Vector2iVector(bgtrails_lines),
+        #     )
+        #     self.bgtrails_set.colors = o3d.utility.Vector3dVector(bgtrails_colors)
+        #     self._3d.scene.add_geometry(f'draw_bgtrials', self.bgtrails_set, self.line_mat)
 
         # ---------- User defined objects update ------------
-        # reset
-        if self.aircraft_name_list:
-            for name in self.aircraft_name_list:
-                self._3d.scene.remove_geometry(name)
-
-        self.aircraft_name_list = []
-
         if self.poly_set is not None:
             self._3d.scene.remove_geometry("poly_set")
+            self.poly_set.clear()
+            self.poly_set = None
+
         points = []
         lines = []
         colors = []
@@ -386,25 +455,50 @@ class BlueSky3dUI:
                     colors.append(self.objcolor[i])  # add color for each connection (p_i, p_i+1)
 
                 if self.objtype[i] == "POLY":
-                    # connect the first point and the last point
-                    first_pt_index = 0
-                    last_pt_index = len(points) - 1  # current length
+                    # connect the first point and the last point of a POLY
+                    points.append(points[-1])
+                    points.append(points[-2 * npoints + 1])
+
                     colors.append(self.objcolor[i])  # add color for this first-last connection
 
-            # Draw bounding box of objdata = [lat0,lon0,lat1,lon1]
+            # Draw bounding box of objdata = [lat0,lon0,lat1,lon1]; up-l;
             elif self.objtype[i] == 'BOX':
                 lat0 = min(self.objdata[i][0], self.objdata[i][2])
                 lon0 = min(self.objdata[i][1], self.objdata[i][3])
                 lat1 = max(self.objdata[i][0], self.objdata[i][2])
                 lon1 = max(self.objdata[i][1], self.objdata[i][3])
 
-                # x0, y0 = self.ll2xy(lat1, lon0)
-                # x1, y1 = self.ll2xy(lat0, lon1)
-                # pg.draw.rect(self.radbmp, self.objcolor[i], pg.Rect(x0, y0, x1 - x0, y1 - y0), 1)
-                x0, y0 = self.m(self.objdata[i][1], self.objdata[i][0])
+                # (lon0, lat1) ----------- (lon1, lat1)
+                #      |                         |
+                #      |                         |
+                #      |                         |
+                # (lon0, lat0) ----------- (lon1, lat0)
+
+                x0, y0 = self.m(lon0, lat1)
+                x1, y1 = self.m(lon1, lat1)
+                x2, y2 = self.m(lon1, lat0)
+                x3, y3 = self.m(lon0, lat0)
+
                 x0, y0 = x0 / self.coord_scale, y0 / self.coord_scale
-                x1, y1 = self.m(self.objdata[i][1], self.objdata[i][0])
                 x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
+                x2, y2 = x2 / self.coord_scale, y2 / self.coord_scale
+                x3, y3 = x3 / self.coord_scale, y3 / self.coord_scale
+
+                # connection1
+                points.append([x0, y0, 0])
+                points.append([x1, y1, 0])
+                # connection2
+                points.append([x1, y1, 0])
+                points.append([x2, y2, 0])
+                # connection3
+                points.append([x2, y2, 0])
+                points.append([x3, y3, 0])
+                # connection4
+                points.append([x3, y3, 0])
+                points.append([x0, y0, 0])
+
+                for _ in range(4):
+                    colors.append(self.objcolor[i])
 
             # Draw circle with objdata = [latcenter,loncenter,radiusnm]
             elif self.objtype[i] == 'CIRCLE':
@@ -413,11 +507,6 @@ class BlueSky3dUI:
                 # xtop, ytop = self.ll2xy(self.objdata[i][0] + self.objdata[i][2] / 60., self.objdata[i][1])
                 # radius = int(round(abs(ytop - ym)))
                 # pg.draw.circle(self.radbmp, self.objcolor[i], (int(xm), int(ym)), radius, 1)
-
-        # put poly at first
-        if first_pt_index is not None and last_pt_index is not None:
-            # connect the first and last points in a POLY
-            lines.append([first_pt_index, last_pt_index])
 
         # all types of object are put in the same list
         for i in range(0, len(points), 2):
@@ -434,31 +523,180 @@ class BlueSky3dUI:
         # Reset background drawing switch
         self.redrawradbg = False
 
-        # -------------------------------------------
+        # -------------- draw aircraft ---------------------------
         if bs.traf.ntraf > 0:  # number of aircraft>0
-            print(f'flight lat: {bs.traf.lat}')
+            aircraft_all_points = []
+            aircraft_all_lines = []
+            aircraft_all_colors = []
+
+            # print(f'flight hdg: {bs.traf.hdg}')
             for i in range(bs.traf.ntraf):
                 lat = bs.traf.lat[i]
                 lon = bs.traf.lon[i]
                 x, y = self.m(lon, lat)
                 x, y = x / self.coord_scale, y / self.coord_scale
 
-                alt = bs.traf.alt
-                hdg = bs.traf.hdg
+                alt = bs.traf.alt[i]
+                hdg = bs.traf.hdg[i]
 
                 self.ndcrs = 0.0  # # manual set
                 isymb = int(round((bs.traf.hdg[i] - self.ndcrs) / 6.)) % 60
 
                 if not bs.traf.cd.inconf[i]:  # not in conflict; green color
-                    aircraft_i = self.aircraft_model.__copy__()
-                    aircraft_i.translate(np.asarray([[x], [y], [0]]))
-
+                    aircraft_i = o3d.geometry.LineSet(
+                        points=o3d.utility.Vector3dVector(self.aircraft_points),
+                        lines=o3d.utility.Vector2iVector(self.aircraft_lines),
+                    )
+                    aircraft_i.colors = o3d.utility.Vector3dVector(self.aircraft_colors_green)
+                    text_color = gui.Color(0.0, 1.0, 0.0, 1.0)
                 else:  # in conflict; yellow
-                    aircraft_i = self.aircraft_amber.__copy__()
-                    aircraft_i.translate(np.asarray([[x], [y], [0]]))
+                    aircraft_i = o3d.geometry.LineSet(
+                        points=o3d.utility.Vector3dVector(self.aircraft_points),
+                        lines=o3d.utility.Vector2iVector(self.aircraft_lines),
+                    )
+                    aircraft_i.colors = o3d.utility.Vector3dVector(self.aircraft_colors_amber)
+                    text_color = gui.Color(255 / 255, 163 / 255, 71 / 255, 1.0)
 
-                self._3d.scene.add_geometry(f'aircraft{i}', aircraft_i, self.line_mat)
-                self.aircraft_name_list.append(f'aircraft{i}')
+                hdg_rad = np.deg2rad(-hdg)
+                r = o3d.geometry.get_rotation_matrix_from_axis_angle(np.asarray([[0], [0], [hdg_rad]]))
+                aircraft_i.rotate(r, aircraft_i.get_center())
+                aircraft_i.translate(np.asarray([[x], [y], [0]]))
+                aircraft_i.scale(self.cam_z, aircraft_i.get_center())
+
+                # to save memory; combine all aircraft lines into one LineSet instead saving individual LineSet
+                # get the tranformed points and then clear it
+                trans_points = np.asarray(aircraft_i.points).tolist()
+                trans_lines = (np.asarray(aircraft_i.lines) + i * 4).tolist()
+                trans_colors = np.asarray(aircraft_i.colors).tolist()
+                aircraft_all_points += trans_points
+                aircraft_all_lines += trans_lines
+                aircraft_all_colors += trans_colors
+
+                aircraft_i.clear()
+                aircraft_i = None
+
+                # labels for each aircraft
+                label_text = f'{bs.traf.id[i]} \n ' \
+                             f'FL{int(round(bs.traf.alt[i] / (100. * ft)))} \n' \
+                             f'{int(round(bs.traf.cas[i] / kts))}'
+                label3d = self._3d.add_3d_label([x, y, 0], label_text)
+                label3d.color = text_color
+                self.aircraft_labels.append(label3d)
+
+            self.all_aircraft_lineset = o3d.geometry.LineSet(
+                points=o3d.utility.Vector3dVector(aircraft_all_points),
+                lines=o3d.utility.Vector2iVector(aircraft_all_lines),
+            )
+            self.all_aircraft_lineset.colors = o3d.utility.Vector3dVector(aircraft_all_colors)
+            self._3d.scene.add_geometry(f'all_aircraft', self.all_aircraft_lineset, self.line_mat)
+
+        # -------------- draw selected routes --------
+        if self.acidrte != "":
+            selected_routes_points = []
+            selected_routes_lines = []
+            selected_routes_colors = []
+
+            i = bs.traf.id2idx(self.acidrte)
+            if i >= 0:
+                for j in range(0, bs.traf.ap.route[i].nwp):
+                    if j == 0:
+                        x1, y1 = self.m(bs.traf.ap.route[i].wplon[j], bs.traf.ap.route[i].wplat[j])
+                        x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
+                    else:
+                        x0, y0 = x1, y1
+                        x1, y1 = self.m(bs.traf.ap.route[i].wplon[j], bs.traf.ap.route[i].wplat[j])
+                        x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
+                        selected_routes_points.append([x0, y0, 0])
+                        selected_routes_points.append([x1, y1, 0])
+
+                    if j >= len(self.rtewpid) or not self.rtewpid[j] == bs.traf.ap.route[i].wpname[j]:
+                        # Waypoint name labels
+                        # If waypoint label bitmap does not yet exist, make it
+
+                        # Waypoint name and constraint(s), if there are any
+                        txt = bs.traf.ap.route[i].wpname[j]
+
+                        alt = bs.traf.ap.route[i].wpalt[j]
+                        spd = bs.traf.ap.route[i].wpspd[j]
+
+                        if alt >= 0. or spd >= 0.:
+                            # Altitude
+                            if alt < 0:
+                                txt = txt + " -----/"
+
+                            elif alt > 4500 * ft:
+                                FL = int(round((alt / (100. * ft))))
+                                txt = txt + " FL" + str(FL) + "/"
+
+                            else:
+                                txt = txt + " " + str(int(round(alt / ft))) + "/"
+
+                            # Speed
+                            if spd < 0:
+                                txt = txt + "---"
+                            else:
+                                txt = txt + str(int(round(spd / kts)))
+
+                        if j >= len(self.rtewpid):
+                            self.rtewpid.append(txt)
+                        else:
+                            self.rtewpid[j] = txt
+                    # labels for traversed waypoints
+                    traverse_wp_label = self._3d.add_3d_label([x1, y1, 0], self.rtewpid[j])
+                    traverse_wp_label.color = gui.Color(1.0, 1.0, 1.0, 1.0)
+                    self.traverse_wp_labels.append(traverse_wp_label)
+
+                    # Line from aircraft to active waypoint
+                    if bs.traf.ap.route[i].iactwp == j:
+                        x0, y0 = self.m(bs.traf.lon[i], bs.traf.lat[i])
+                        x0, y0 = x0 / self.coord_scale, y0 / self.coord_scale
+                        selected_routes_points.append([x0, y0, 0])
+                        selected_routes_points.append([x1, y1, 0])
+
+                for n_ in range(0, len(selected_routes_points), 2):
+                    selected_routes_lines.append([n_, n_ + 1])
+                for n_ in range(len(selected_routes_lines)):
+                    selected_routes_colors.append(magenta)
+
+                self.selected_routes_set = o3d.geometry.LineSet(
+                    points=o3d.utility.Vector3dVector(selected_routes_points),
+                    lines=o3d.utility.Vector2iVector(selected_routes_lines),
+                )
+                self.selected_routes_set.colors = o3d.utility.Vector3dVector(selected_routes_colors)
+                self._3d.scene.add_geometry(f'selected_routes', self.selected_routes_set, self.line_mat)
+
+        # -------
+        # Draw aircraft trails which are on screen
+        # if bs.traf.trails.active:
+        #     lon0_list = bs.traf.trails.lon0.tolist()
+        #     if len(lon0_list) > 1:  # not empty
+        #         trail_points = []
+        #         trail_lines = []
+        #         trail_colors = []
+        #         # print(len(bs.traf.trails.lon0), len(bs.traf.trails.lat0),
+        #         #       len(bs.traf.trails.lon1), len(bs.traf.trails.lat1))
+        #         for i in range(len(lon0_list)):
+        #             x0, y0 = self.m(bs.traf.trails.lon0[i], bs.traf.trails.lat0[i])
+        #             x1, y1 = self.m(bs.traf.trails.lon1[i], bs.traf.trails.lat1[i])
+        #             x0, y0 = x0 / self.coord_scale, y0 / self.coord_scale
+        #             x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
+        #             trail_points.append([x0, y0, 0])
+        #             trail_points.append([x1, y1, 0])
+        #
+        #             # trail_colors.append(bs.traf.trails.col[i] / 255)  # normalize to 0-1
+        #
+        #         for i_ in range(0, len(trail_points), 2):
+        #             trail_lines.append([i_, i_ + 1])
+        #         for i_ in range(len(trail_lines)):
+        #             trail_colors.append(bs.traf.trails.col[i_] / 255)
+        #
+        #         self.trails_set = o3d.geometry.LineSet(
+        #             points=o3d.utility.Vector3dVector(trail_points),
+        #             lines=o3d.utility.Vector2iVector(trail_lines),
+        #         )
+        #         self.trails_set.colors = o3d.utility.Vector3dVector(trail_colors)
+        #         self._3d.scene.add_geometry(f'draw_trials', self.trails_set, self.line_mat)
+
         # ------------ update information ------------
         self.utc.text = str(bs.sim.utc.replace(microsecond=0))
         self.simt.text = tim2txt(bs.sim.simt)
@@ -470,7 +708,7 @@ class BlueSky3dUI:
         self.total_con = str(len(bs.traf.cd.confpairs_all))
 
         self.window.set_needs_layout()  # Flags window to re-layout
-        # self.window.post_redraw()
+        self.window.post_redraw()
 
     # ============================================================================
     # open3d gui
@@ -790,7 +1028,7 @@ class BlueSky3dUI:
         """Pan function:
                absolute: lat,lon;
                relative: ABOVE/DOWN/LEFT/RIGHT"""
-        lat, lon = 52.073532, -0.607121
+        ctrlat, ctrlon = 52.073532, -0.607121
         if type(args[0]) == str:
             if args[0].upper() == "LEFT":
                 self.cam_x -= 1
@@ -810,13 +1048,29 @@ class BlueSky3dUI:
 
             else:
                 # to-do: implement PAN latlon/acid/airport/waypoint
-                pass
+                i = bs.navdb.getwpidx(args[0], ctrlat, ctrlon)
+                if i < 0:
+                    i = bs.navdb.getaptidx(args[0], ctrlat, ctrlon)
+                    if i > 0:
+                        lat = bs.navdb.aptlat[i]
+                        lon = bs.navdb.aptlon[i]
+                else:
+                    lat = bs.navdb.wplat[i]
+                    lon = bs.navdb.wplon[i]
+
+                if i < 0:
+                    return False, args[0] + "not found."
 
         else:
             if len(args) > 1:
                 lat, lon = args[:2]
             else:
                 return False
+
+        x, y = self.m(lon, lat)
+        x, y = x / self.coord_scale, y / self.coord_scale
+        self.cam_x, self.cam_y = x, y
+        self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
 
         return True
 
@@ -825,7 +1079,7 @@ class BlueSky3dUI:
 
         # Zoom factor: 2.0 means halving the display size in degrees lat/lon
         # ZOom out with e.g. 0.5
-        self.cam_z = self.cam_z + (1 - factor) * 10
+        self.cam_z = self.cam_z + (1 - factor) * 65
         self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
 
         return
@@ -874,6 +1128,13 @@ class BlueSky3dUI:
         self.objdata = []
         self.redrawradbg = True  # redraw background
         return
+
+    def showroute(self, acid):  # Toggle show route for an aircraft id
+        if self.acidrte == acid:
+            self.acidrte = ""  # Click twice on same: route disappear
+        else:
+            self.acidrte = acid  # Show this route
+        return True
 
 
 if __name__ == '__main__':
