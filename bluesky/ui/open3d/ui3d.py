@@ -831,6 +831,7 @@ class BlueSky3dUI:
         osm_files = sorted(glob.glob(f'{self.osm_path}/*.osm'))
         for name in osm_files:
             if name not in self.osm_files:
+                self.osm_files.append(name)
                 self.combo_osm.add_item(name)
 
         self.checkbox_osm.checked = False
