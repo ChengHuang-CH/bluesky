@@ -5,6 +5,7 @@ data/cache
 data/grib
 data/netcdf
 data/performance/BADA/*
+data/osm/*
 !/data/performance/BADA/README.md
 
 # Sphinx documentation

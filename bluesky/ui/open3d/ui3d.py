@@ -2,9 +2,13 @@ import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 from mpl_toolkits.basemap import Basemap
+import osmnx as ox
+from shapely.ops import triangulate
+
 import time
 import os
 import subprocess
+import glob
 
 import bluesky as bs
 from bluesky import stack
@@ -78,7 +82,7 @@ class BlueSky3dUI:
         self._3d.scene.set_background([0.1, 0.1, 0.25, 1.0])
         self._3d.scene.show_axes(True)
 
-        self._3d.scene.add_geometry("coastlines", self.line_set, self.mat)
+        self._3d.scene.add_geometry("coastlines", self.line_set, self.line_mat)
         bbox = o3d.geometry.AxisAlignedBoundingBox([-1, -1, -1],
                                                    [1, 1, 1])
         self.bounds = self._3d.scene.bounding_box
@@ -156,20 +160,39 @@ class BlueSky3dUI:
 
         # sub-panel: uam configuration
         self.uam_config_tab = gui.TabControl()
-        self.uam_config = gui.Vert()
-        self.uam_config_tab.add_tab("UAM configuration", self.uam_config)
 
-        self.checkbox_osm = gui.Checkbox("Osm")
-        # self.checkbox_osm.set_on_checked(self._on_check_osm)
-        self.uam_config.add_child(self.checkbox_osm)
+        self.osm_tab = gui.Vert(0, gui.Margins(0, 0.1 * self.em, 0, 0))
+        self.uam_config_tab.add_tab("OSM", self.osm_tab)
 
+        self.combo_osm = gui.Combobox()
+        self.combo_osm.add_item("[select/refresh osm files]")
+
+        self.osm_path = 'data/osm'
+        self.osm_files = sorted(glob.glob(f'{self.osm_path}/*.osm'))
+        for osm_file in self.osm_files:
+            self.combo_osm.add_item(osm_file)
+
+        # self.combo_osm.add_item("Show point velocity")
+        # self.combo_osm.add_item("Show bounding boxes")
+        self.combo_osm.set_on_selection_changed(self._on_combo)
+        self.osm_tab.add_child(self.combo_osm)
+
+        self.checkbox_osm = gui.Checkbox("Enable")
+        self.checkbox_osm.enabled = False  # not enabled at first until a valid file is selected.
+        self.checkbox_osm.set_on_checked(self._on_check_osm)
+        self.osm_tab.add_child(self.checkbox_osm)
+
+        self.turbulence_tab = gui.Vert(0, gui.Margins(0, 0, 0, 0))
+        self.uam_config_tab.add_tab("Turbulence", self.turbulence_tab)
         self.checkbox_turbulence = gui.Checkbox("Turbulence")
         # self.checkbox_turbulence.set_on_checked(self._on_check_tur)
-        self.uam_config.add_child(self.checkbox_turbulence)
+        self.turbulence_tab.add_child(self.checkbox_turbulence)
 
+        self.traffic_tab = gui.Vert(0, gui.Margins(0, 0.1 * self.em, 0, 0))
+        self.uam_config_tab.add_tab("Traffic", self.traffic_tab)
         self.checkbox_ground = gui.Checkbox("Ground traffic")
         # self.checkbox_ground.set_on_checked(self._on_check_ground)
-        self.uam_config.add_child(self.checkbox_ground)
+        self.traffic_tab.add_child(self.checkbox_ground)
 
         self.collapse.add_child(self.uam_config_tab)
 
@@ -274,6 +297,13 @@ class BlueSky3dUI:
         self.trails_set = None
         self.bgtrails_set = None
         self.traverse_wp_labels = []
+
+        self.osm_building_set = None
+        self.osm_roads_set = None
+        self.osm_graph_data = None
+        self.osm_building_data = None
+
+        self.selected_osm_file = None
 
         # User defined background objects
         self.objtype = []
@@ -789,10 +819,137 @@ class BlueSky3dUI:
                 lines=o3d.utility.Vector2iVector(lines),
             )
             self.fir_lineset.colors = o3d.utility.Vector3dVector(colors)
-            self._3d.scene.add_geometry("fir_lineset", self.fir_lineset, self.mat)
+            self._3d.scene.add_geometry("fir_lineset", self.fir_lineset, self.line_mat)
         else:
             if self.fir_lineset is not None:
                 self._3d.scene.remove_geometry("fir_lineset")
+                self.fir_lineset.clear()
+                self.fir_lineset = None
+
+    def _on_combo(self, new_val, new_idx):
+        # scan and refresh the folder
+        osm_files = sorted(glob.glob(f'{self.osm_path}/*.osm'))
+        for name in osm_files:
+            if name not in self.osm_files:
+                self.combo_osm.add_item(name)
+
+        self.checkbox_osm.checked = False
+        self._on_check_osm(False)  # remove drawed objects from canvas when the selection is changed.
+
+        if new_idx == 0:
+            self.checkbox_osm.enabled = False
+        # selection
+        if new_idx != 0:
+
+            print('loading osm file, please wait ...')
+            self.selected_osm_file = new_val
+            t0 = time.time()
+            G = ox.graph_from_xml(new_val)
+            buildings = ox.geometries_from_xml(new_val, tags={'building': True})
+            self.osm_graph_data = G
+            self.osm_building_data = buildings
+            t1 = time.time()
+            txt = f'It takes {(t1 - t0):.3f} s for loading data from {self.selected_osm_file}.'
+            print(txt)
+            stack.stack(f'ECHO {txt}')
+
+            self.checkbox_osm.enabled = True  # the checkbox can be ticked when a file is selected.
+
+        print(f'selected file: {new_val, new_idx}')
+
+    def _on_check_osm(self, checked):
+        if checked:
+            geometry = self.osm_building_data['geometry'].tolist()
+            gdf_edges = ox.graph_to_gdfs(self.osm_graph_data, nodes=False)["geometry"].tolist()
+
+            # draw osm buildings
+            t1 = time.time()
+            # buildings
+            # height = self.osm_building_data['height'].tolist()
+
+            building_vetices = []
+            building_triangles = []
+            for polygon in geometry:
+                if polygon.geom_type != 'Polygon':
+                    continue
+                else:
+                    #
+                    triangles = triangulate(polygon)
+                    # several triangles in a polygon
+                    for triangle in triangles:
+                        triangle_points = list(triangle.exterior.coords)  # len=4; [(x0,y0),(x1,y1),(x2,y2),(x0,y0)]
+                        building_vetices += triangle_points[0:3]
+
+            # add z value to each point and record triangle
+            single_triangle_index = []
+            for i in range(len(building_vetices)):
+                num_i = i + 1
+                lon, lat = building_vetices[i][0], building_vetices[i][1]
+                x, y = self.m(lon, lat)
+                x, y = x / self.coord_scale, y / self.coord_scale
+                building_vetices[i] = [x, y, 0]
+                single_triangle_index.append(i)
+                if num_i % 3 == 0:
+                    building_triangles.append(single_triangle_index)
+                    single_triangle_index = []
+
+            self.osm_building_set = o3d.geometry.TriangleMesh(
+                o3d.utility.Vector3dVector(building_vetices),
+                o3d.utility.Vector3iVector(building_triangles)
+            )
+            self.osm_building_set.compute_vertex_normals()
+
+            # roads
+
+            road_points = []
+            road_lines = []
+            last_linestrings_len = 0
+            anchor_point = []
+            for edge in gdf_edges:
+                if edge.geom_type != 'LineString':
+                    continue
+                else:
+                    # for each linestring
+                    coords = list(edge.coords)
+                    for j, coord in enumerate(coords):
+                        lon, lat = coord[0], coord[1]
+                        x, y = self.m(lon, lat)
+                        x, y = x / self.coord_scale, y / self.coord_scale
+                        road_points.append([x, y, 0])
+                        if j > 0:
+                            road_lines.append([last_linestrings_len + j - 1, last_linestrings_len + j])
+
+                        anchor_point = [x, y]
+                    last_linestrings_len += len(coords)
+
+            colors = [[0.5, 0.5, 1.0] for _ in range(len(road_lines))]
+            self.osm_roads_set = o3d.geometry.LineSet(
+                points=o3d.utility.Vector3dVector(road_points),
+                lines=o3d.utility.Vector2iVector(road_lines),
+            )
+            self.osm_roads_set.colors = o3d.utility.Vector3dVector(colors)
+
+            self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.mat)
+            self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat)
+
+            t2 = time.time()
+            txt = f'It takes {(t2 - t1):.3f} s to render {self.selected_osm_file}.'
+            print(txt)
+            stack.stack(f'ECHO {txt}')
+
+            # switch the view to the interest area
+            self.cam_x, self.cam_y, self.cam_z = anchor_point[0], anchor_point[1], 2.0
+            self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
+
+        else:
+            if self.osm_building_set is not None:
+                self._3d.scene.remove_geometry("osm_building_set")
+                self.osm_building_set.clear()
+                self.osm_building_set = None
+            if self.osm_roads_set is not None:
+                self._3d.scene.remove_geometry("osm_roads_set")
+                self.osm_roads_set.clear()
+                self.osm_roads_set = None
 
     def _on_filedlg_button(self):
         self.file_done = False  # reset the selection status for next usage.
