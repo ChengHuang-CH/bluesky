@@ -15,6 +15,8 @@ polygon = building_geos[index]
 fig, ax = ox.plot_footprints(buildings)
 
 x, y = polygon.exterior.xy
+coords = list(polygon.exterior.coords)
+print(x, y)
 # plt.plot(x, y)
 # plt.show()
 

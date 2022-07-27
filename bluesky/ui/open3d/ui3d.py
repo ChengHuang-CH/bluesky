@@ -841,7 +841,6 @@ class BlueSky3dUI:
             self.checkbox_osm.enabled = False
         # selection
         if new_idx != 0:
-
             print('loading osm file, please wait ...')
             self.selected_osm_file = new_val
             t0 = time.time()
@@ -869,36 +868,40 @@ class BlueSky3dUI:
             # height = self.osm_building_data['height'].tolist()
 
             building_vetices = []
-            building_triangles = []
+            building_lines = []
+            total_ind = 0
             for polygon in geometry:
                 if polygon.geom_type != 'Polygon':
                     continue
                 else:
-                    #
-                    triangles = triangulate(polygon)
-                    # several triangles in a polygon
-                    for triangle in triangles:
-                        triangle_points = list(triangle.exterior.coords)  # len=4; [(x0,y0),(x1,y1),(x2,y2),(x0,y0)]
-                        building_vetices += triangle_points[0:3]
+                    # for each polygon
+                    coords = list(polygon.exterior.coords)
 
-            # add z value to each point and record triangle
-            single_triangle_index = []
-            for i in range(len(building_vetices)):
-                num_i = i + 1
-                lon, lat = building_vetices[i][0], building_vetices[i][1]
-                x, y = self.m(lon, lat)
-                x, y = x / self.coord_scale, y / self.coord_scale
-                building_vetices[i] = [x, y, 0]
-                single_triangle_index.append(i)
-                if num_i % 3 == 0:
-                    building_triangles.append(single_triangle_index)
-                    single_triangle_index = []
+                    # for each point in the polygon
+                    for local_i, coord in enumerate(coords):
 
-            self.osm_building_set = o3d.geometry.TriangleMesh(
-                o3d.utility.Vector3dVector(building_vetices),
-                o3d.utility.Vector3iVector(building_triangles)
+                        lon, lat = coord[0], coord[1]
+                        x, y = self.m(lon, lat)
+                        x, y = x / self.coord_scale, y / self.coord_scale
+                        building_vetices.append([x, y, 0])
+
+                        if local_i > 0:
+                            building_lines.append([local_i - 1 + total_ind, local_i + total_ind])
+
+                    total_ind += len(coords)
+
+            colors = [[0.5, 1.0, 1.0] for _ in range(len(building_lines))]
+            self.osm_building_set = o3d.geometry.LineSet(
+                points=o3d.utility.Vector3dVector(building_vetices),
+                lines=o3d.utility.Vector2iVector(building_lines),
             )
-            self.osm_building_set.compute_vertex_normals()
+            self.osm_building_set.colors = o3d.utility.Vector3dVector(colors)
+
+            # self.osm_building_set = o3d.geometry.TriangleMesh(
+            #     o3d.utility.Vector3dVector(building_vetices),
+            #     o3d.utility.Vector3iVector(building_triangles)
+            # )
+            # self.osm_building_set.compute_vertex_normals()
 
             # roads
 
@@ -930,8 +933,8 @@ class BlueSky3dUI:
             )
             self.osm_roads_set.colors = o3d.utility.Vector3dVector(colors)
 
-            self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.mat)
             self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat)
+            self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.line_mat)
 
             t2 = time.time()
             txt = f'It takes {(t2 - t1):.3f} s to render {self.selected_osm_file}.'
