@@ -271,7 +271,6 @@ class BlueSky3dUI:
 
         # console
         # self._console = gui.CollapsableVert("Console", 0 * self.em, gui.Margins(0 * self.em, 0, 0, 0))
-
         self.window.add_child(self._panel)
         # self.window.add_child(self._console)
         self.window.add_child(self._3d)
@@ -606,8 +605,14 @@ class BlueSky3dUI:
                 aircraft_i = None
 
                 # labels for each aircraft
+                fl_level = int(round(bs.traf.alt[i] / (100. * ft)))
+                if fl_level >= 5:
+                    alt_text = f'FL{fl_level}'
+                else:
+                    alt_text = f'{bs.traf.alt[i]:.1f} m'
+
                 label_text = f'{bs.traf.id[i]} \n ' \
-                             f'FL{int(round(bs.traf.alt[i] / (100. * ft)))} \n' \
+                             f'{alt_text} \n' \
                              f'{int(round(bs.traf.cas[i] / kts))}'
                 label3d = self._3d.add_3d_label([x, y, 0], label_text)
                 label3d.color = text_color
@@ -987,7 +992,7 @@ class BlueSky3dUI:
 
     def on_layout(self, context=None):
         frame = self.window.content_rect
-        # print(frame.x, frame.y, frame.width, frame.height)
+        # print(frame.x, frame.y, frame.width, frame.height)  # default: 0 0 1080 720
         em = self.window.theme.font_size
         panel_width = 15 * em  # 20 * em
         panel_rect = gui.Rect(frame.get_right() - panel_width, frame.y,
@@ -1016,10 +1021,10 @@ class BlueSky3dUI:
         if not self.view3d:  # 2d view control
             print(event.type, event.key, event.type == gui.KeyEvent.Type.DOWN, event.key == gui.KeyName.A.value)
 
-            if event.type == gui.KeyEvent.Type.DOWN and event.key == gui.KeyName.A.value:
+            if event.type == gui.KeyEvent.Type.DOWN or event.key == gui.KeyName.A.value:
                 self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
                 self.cam_x -= 1
-            if event.type == gui.KeyEvent.Type.DOWN and event.key == gui.KeyName.D.value:
+            if event.type == gui.KeyEvent.Type.DOWN or event.key == gui.KeyName.D.value:
                 self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
                 self.cam_x += 1
 
