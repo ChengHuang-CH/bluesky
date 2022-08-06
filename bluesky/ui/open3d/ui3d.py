@@ -4,6 +4,8 @@ import open3d.visualization.gui as gui
 from mpl_toolkits.basemap import Basemap
 import osmnx as ox
 from shapely.ops import triangulate
+import geopandas as gpd
+from geovoronoi import voronoi_regions_from_coords
 
 import time
 import os
@@ -862,6 +864,36 @@ class BlueSky3dUI:
 
         print(f'selected file: {new_val, new_idx}')
 
+    def to_triangles(self, polygon):
+        poly_points = []
+
+        gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(
+            index_parts=True).reset_index()
+        for geom in gdf_poly_exterior.geometry:
+            poly_points += np.array(geom.coords).tolist()
+
+        try:
+            polygon.interiors[0]
+        except:
+            poly_points = poly_points
+        else:
+            gdf_poly_interior = gpd.GeoDataFrame({'geometry': [polygon.interiors]}).explode(
+                index_parts=True).reset_index()
+            for geom in gdf_poly_interior.geometry:
+                poly_points += np.array(geom.coords).tolist()
+
+        poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1, 2)
+
+        poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
+        gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode(index_parts=True).reset_index()
+
+        tri_geom = []
+        for geom in gdf_poly_voronoi.geometry:
+            inside_triangles = [tri for tri in triangulate(geom) if tri.centroid.within(polygon)]
+            tri_geom += inside_triangles
+
+        return tri_geom
+
     def _on_check_osm(self, checked):
         if checked:
             geometry = self.osm_building_data['geometry'].tolist()
@@ -872,6 +904,7 @@ class BlueSky3dUI:
             # buildings
             # height = self.osm_building_data['height'].tolist()
 
+            building_triangles = []
             building_vetices = []
             building_lines = []
             total_ind = 0
@@ -879,7 +912,7 @@ class BlueSky3dUI:
                 if polygon.geom_type != 'Polygon':
                     continue
                 else:
-                    # for each polygon
+                    # # plot lines -- for each polygon
                     coords = list(polygon.exterior.coords)
 
                     # for each point in the polygon
@@ -895,18 +928,37 @@ class BlueSky3dUI:
 
                     total_ind += len(coords)
 
+                    # # triangles
+                    # triangles = self.to_triangles(polygon)
+                    # for triangle in triangles:
+                    #     triangle_points = list(triangle.exterior.coords)  # len=4; [(x0,y0),(x1,y1),(x2,y2),(x0,y0)]
+                    #     building_vetices += triangle_points[0:3]
+
+            # # add z value to each point and record triangle
+            # single_triangle_index = []
+            # for i in range(len(building_vetices)):
+            #     num_i = i + 1
+            #     lon, lat = building_vetices[i][0], building_vetices[i][1]
+            #     x, y = self.m(lon, lat)
+            #     x, y = x / self.coord_scale, y / self.coord_scale
+            #     building_vetices[i] = [x, y, 0]
+            #     single_triangle_index.append(i)
+            #     if num_i % 3 == 0:
+            #         building_triangles.append(single_triangle_index)
+            #         single_triangle_index = []
+            #
+            # self.osm_building_set = o3d.geometry.TriangleMesh(
+            #     o3d.utility.Vector3dVector(building_vetices),
+            #     o3d.utility.Vector3iVector(building_triangles)
+            # )
+            # self.osm_building_set.compute_vertex_normals()
+
             colors = [[0.5, 1.0, 1.0] for _ in range(len(building_lines))]
             self.osm_building_set = o3d.geometry.LineSet(
                 points=o3d.utility.Vector3dVector(building_vetices),
                 lines=o3d.utility.Vector2iVector(building_lines),
             )
             self.osm_building_set.colors = o3d.utility.Vector3dVector(colors)
-
-            # self.osm_building_set = o3d.geometry.TriangleMesh(
-            #     o3d.utility.Vector3dVector(building_vetices),
-            #     o3d.utility.Vector3iVector(building_triangles)
-            # )
-            # self.osm_building_set.compute_vertex_normals()
 
             # roads
 
