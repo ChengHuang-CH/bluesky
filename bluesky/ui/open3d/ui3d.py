@@ -4,8 +4,7 @@ import open3d.visualization.gui as gui
 from mpl_toolkits.basemap import Basemap
 import osmnx as ox
 from shapely.ops import triangulate
-import geopandas as gpd
-from geovoronoi import voronoi_regions_from_coords
+
 
 import time
 import os
@@ -19,6 +18,9 @@ from bluesky.navdatabase import Navdatabase
 from bluesky.tools import geo, areafilter
 from bluesky.tools.aero import ft, kts, nm
 from bluesky.tools.misc import tim2txt
+
+from .sensor import Sensor
+from .information import Info
 
 # colors
 black = (0, 0, 0)
@@ -72,6 +74,15 @@ class BlueSky3dUI:
 
         self.line_mat = o3d.visualization.rendering.MaterialRecord()
         self.line_mat.shader = "unlitLine"
+        self.line_mat.line_width = 1.0
+
+        self.line_mat_thin = o3d.visualization.rendering.MaterialRecord()
+        self.line_mat_thin.shader = "unlitLine"
+        self.line_mat_thin.line_width = 0.5
+
+        self.line_mat_thick = o3d.visualization.rendering.MaterialRecord()
+        self.line_mat_thick.shader = "unlitLine"
+        self.line_mat_thick.line_width = 2
 
         # cube for demo
         self.cube = o3d.geometry.TriangleMesh.create_box(width=1.0,
@@ -200,41 +211,13 @@ class BlueSky3dUI:
 
         # sub-panel: info
         self.info_line = gui.TabControl()
-        self.info = gui.VGrid(2)
 
-        self.info.add_child(gui.Label("UTC"))
-        self.utc = gui.Label("00:00:00")
-        self.info.add_child(self.utc)
+        self.info = Info()
+        self.info_line.add_tab("Info", self.info.info)
 
-        self.info.add_child(gui.Label("sim t"))
-        self.simt = gui.Label("0.000")
-        self.info.add_child(self.simt)
+        self.sensor = Sensor(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat, self.cdir)
+        self.info_line.add_tab("Sensor", self.sensor.sensor_control)
 
-        self.info.add_child(gui.Label("ntraf"))
-        self.ntraf = gui.Label("0")
-        self.info.add_child(self.ntraf)
-
-        self.info.add_child(gui.Label("Freq"))
-        self.freq = gui.Label("0")
-        self.info.add_child(self.freq)
-
-        self.info.add_child(gui.Label("#LOS"))
-        self.los = gui.Label("0")
-        self.info.add_child(self.los)
-
-        self.info.add_child(gui.Label("Total LOS"))
-        self.total_los = gui.Label("0")
-        self.info.add_child(self.total_los)
-
-        self.info.add_child(gui.Label("#Con"))
-        self.con = gui.Label("0")
-        self.info.add_child(self.con)
-
-        self.info.add_child(gui.Label("Total Con"))
-        self.total_con = gui.Label("0")
-        self.info.add_child(self.total_con)
-
-        self.info_line.add_tab("Info", self.info)
         self.collapse.add_child(self.info_line)
 
         # sub-panel: console
@@ -718,7 +701,7 @@ class BlueSky3dUI:
         #             x0, y0 = x0 / self.coord_scale, y0 / self.coord_scale
         #             x1, y1 = x1 / self.coord_scale, y1 / self.coord_scale
         #             trail_points.append([x0, y0, 0])
-        #             trail_points.append([x1, y1, 0])
+        #             trail_points.append([x1, y1, 0])1.0
         #
         #             # trail_colors.append(bs.traf.trails.col[i] / 255)  # normalize to 0-1
         #
@@ -735,14 +718,14 @@ class BlueSky3dUI:
         #         self._3d.scene.add_geometry(f'draw_trials', self.trails_set, self.line_mat)
 
         # ------------ update information ------------
-        self.utc.text = str(bs.sim.utc.replace(microsecond=0))
-        self.simt.text = tim2txt(bs.sim.simt)
-        self.ntraf.text = str(bs.traf.ntraf)
-        self.freq.text = str(int(len(self.dts) / max(0.001, sum(self.dts))))
-        self.los.text = str(len(bs.traf.cd.lospairs_unique))
-        self.total_los = str(len(bs.traf.cd.lospairs_all))
-        self.con = str(len(bs.traf.cd.confpairs_unique))
-        self.total_con = str(len(bs.traf.cd.confpairs_all))
+        self.info.utc.text = str(bs.sim.utc.replace(microsecond=0))
+        self.info.simt.text = tim2txt(bs.sim.simt)
+        self.info.ntraf.text = str(bs.traf.ntraf)
+        self.info.freq.text = str(int(len(self.dts) / max(0.001, sum(self.dts))))
+        self.info.los.text = str(len(bs.traf.cd.lospairs_unique))
+        self.info.total_los = str(len(bs.traf.cd.lospairs_all))
+        self.info.con = str(len(bs.traf.cd.confpairs_unique))
+        self.info.total_con = str(len(bs.traf.cd.confpairs_all))
 
         self.window.set_needs_layout()  # Flags window to re-layout
         self.window.post_redraw()
@@ -865,6 +848,9 @@ class BlueSky3dUI:
         print(f'selected file: {new_val, new_idx}')
 
     def to_triangles(self, polygon):
+        import geopandas as gpd
+        from geovoronoi import voronoi_regions_from_coords
+
         poly_points = []
 
         gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(
@@ -983,15 +969,15 @@ class BlueSky3dUI:
                         anchor_point = [x, y]
                     last_linestrings_len += len(coords)
 
-            colors = [[0.5, 0.5, 1.0] for _ in range(len(road_lines))]
+            colors = [[0.5, 0.5, 0.5] for _ in range(len(road_lines))]
             self.osm_roads_set = o3d.geometry.LineSet(
                 points=o3d.utility.Vector3dVector(road_points),
                 lines=o3d.utility.Vector2iVector(road_lines),
             )
             self.osm_roads_set.colors = o3d.utility.Vector3dVector(colors)
 
-            self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat)
-            self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.line_mat)
+            self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat_thin)
+            self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.line_mat_thick)
 
             t2 = time.time()
             txt = f'It takes {(t2 - t1):.3f} s to render {self.selected_osm_file}.'
