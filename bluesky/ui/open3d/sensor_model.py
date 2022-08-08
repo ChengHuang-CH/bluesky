@@ -2,7 +2,7 @@ import json
 import numpy as np
 import pyproj
 import scipy.spatial.transform
-
+import time
 
 # camera model
 class CameraModel:
@@ -154,6 +154,9 @@ def test_sensor_boundary():
 
 
 def geodetic2enu(lat, lon, alt, lat_org, lon_org, alt_org):
+    """
+    convert the gps point to ENU point reference to a local point.
+    """
     transformer = pyproj.Transformer.from_crs(
         {"proj": 'latlong', "ellps": 'WGS84', "datum": 'WGS84'},
         {"proj": 'geocent', "ellps": 'WGS84', "datum": 'WGS84'},
@@ -180,19 +183,13 @@ def test_transform():
     reference_point = [52.070378, -0.628175, 0]
 
     sensor_pt = geodetic2enu(sensor_point[0], sensor_point[1], sensor_point[2],
-                        reference_point[0], reference_point[1], reference_point[2])
+                             reference_point[0], reference_point[1], reference_point[2])
 
     target_pt = geodetic2enu(target_point[0], target_point[1], target_point[2],
                              reference_point[0], reference_point[1], reference_point[2])
 
-    sensor_pitch, sensor_yaw, sensor_roll = 0, np.deg2rad(-90), 0  # r_y, r_z, r_x
-    target_pitch, target_yaw, target_roll = 0, 0, 0  # r_y, r_z, r_x
+    sensor_pitch, sensor_yaw, sensor_roll = 0, np.deg2rad(90), 0  # r_y, r_z, r_x
 
-    # relative_x, relative_y, relative_z = target_point_x - sensor_point_x, \
-    #                                      target_point_y - sensor_point_y, \
-    #                                      target_point[-1] - sensor_point[-1]
-
-    # pitch, yaw, roll = target_pitch-sensor_pitch, target_yaw-sensor_yaw, target_roll-sensor_roll  # relative
     pitch, yaw, roll = sensor_pitch, sensor_yaw, sensor_roll
 
     # http://brainvoyager.com/bv/doc/UsersGuide/CoordsAndTransforms/SpatialTransformationMatrices.html
@@ -201,18 +198,23 @@ def test_transform():
     rz = np.array([[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]])
 
     rotation_matrix = rz.dot(ry).dot(rx)
-    # translation = np.array([[relative_x], [relative_y], [relative_z]])
-    translation = np.array([[-sensor_pt[0]], [-sensor_pt[1]], [-sensor_pt[2]]])
-    M = np.hstack((rotation_matrix, translation))
-    M = np.vstack((M, np.array([[0, 0, 0, 1]])))
+
+    translation = np.array([[sensor_pt[0]], [sensor_pt[1]], [sensor_pt[2]]])
+    sensor2world = np.hstack((rotation_matrix, translation))
+    sensor2world = np.vstack((sensor2world, np.array([[0, 0, 0, 1]])))
 
     target = np.array([[target_pt[0]], [target_pt[1]], [target_pt[2]], [1]])
 
-    trans = np.dot(M, target)
+    world2sensor = np.linalg.inv(sensor2world)
+
+    trans = np.dot(world2sensor, target)
     print(trans)
 
 
 if __name__ == '__main__':
     # save()
     # load()
+    t0 = time.time()
     test_transform()
+    t1 = time.time()
+    print(t1-t0)

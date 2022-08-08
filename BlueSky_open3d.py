@@ -3,6 +3,7 @@
 from __future__ import print_function
 import bluesky as bs
 import threading
+import time
 
 
 def main():
@@ -21,6 +22,9 @@ def main():
 def update():
     # Main loop for Open3d
     while not bs.sim.state == bs.END:
+
+        time.sleep(0.1)  # important!! to make updating plot fluently
+
         bs.sim.step()  # Update sim
 
         # ======= # GUI update ========
@@ -31,6 +35,10 @@ def update():
             break
         else:
             bs.scr.app.post_to_main_thread(bs.scr.window, bs.scr.update)
+            if bs.scr.sensor.subwindow_opened:
+                # bs.scr.sensor.update_sensor_stream()
+                bs.scr.app.post_to_main_thread(bs.scr.sensor.subwindow_sensor_render,
+                                               bs.scr.sensor.update_sensor_stream)
 
 
 if __name__ == '__main__':

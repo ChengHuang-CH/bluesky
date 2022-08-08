@@ -5,7 +5,6 @@ from mpl_toolkits.basemap import Basemap
 import osmnx as ox
 from shapely.ops import triangulate
 
-
 import time
 import os
 import subprocess
@@ -215,14 +214,15 @@ class BlueSky3dUI:
         self.info = Info()
         self.info_line.add_tab("Info", self.info.info)
 
-        self.sensor = Sensor(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat, self.cdir)
+        self.sensor = Sensor(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat,
+                             self.cdir)
         self.info_line.add_tab("Sensor", self.sensor.sensor_control)
 
         self.collapse.add_child(self.info_line)
 
         # sub-panel: console
         self.consoleline = gui.TabControl()
-        self.console = gui.Vert(3 * self.em)
+        self.console = gui.Vert(2.5 * self.em)
         self.consoleline.add_tab("Console", self.console)
         self.collapse.add_child(self.consoleline)
         # text color
@@ -539,6 +539,7 @@ class BlueSky3dUI:
 
         # -------------- draw aircraft ---------------------------
         if bs.traf.ntraf > 0:  # number of aircraft>0
+
             aircraft_all_points = []
             aircraft_all_lines = []
             aircraft_all_colors = []
@@ -552,6 +553,8 @@ class BlueSky3dUI:
 
                 alt = bs.traf.alt[i]
                 hdg = bs.traf.hdg[i]
+
+                # print(lat, lon, alt, hdg)
 
                 self.ndcrs = 0.0  # # manual set
                 isymb = int(round((bs.traf.hdg[i] - self.ndcrs) / 6.)) % 60
