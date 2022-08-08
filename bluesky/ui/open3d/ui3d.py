@@ -215,7 +215,7 @@ class BlueSky3dUI:
         self.info_line.add_tab("Info", self.info.info)
 
         self.sensor = Sensor(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat,
-                             self.cdir)
+                             self.line_mat_thick, self.cdir)
         self.info_line.add_tab("Sensor", self.sensor.sensor_control)
 
         self.collapse.add_child(self.info_line)
@@ -979,7 +979,7 @@ class BlueSky3dUI:
             )
             self.osm_roads_set.colors = o3d.utility.Vector3dVector(colors)
 
-            self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat_thin)
+            # self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat_thin)
             self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.line_mat_thick)
 
             t2 = time.time()
@@ -1028,7 +1028,7 @@ class BlueSky3dUI:
         self.file_done = True
         self.file_path = path
 
-        # stack.stack(f'IC {path}')  # for manual file selection from gui
+        stack.stack(f'IC {path}')  # for manual file selection from gui
         os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
 
     def on_layout(self, context=None):

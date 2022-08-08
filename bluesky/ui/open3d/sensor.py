@@ -5,13 +5,12 @@ import numpy as np
 import scipy.spatial.transform
 import pyproj
 import os
-import matplotlib.pyplot as plt
 
 import bluesky as bs
 
 
 class Sensor:
-    def __init__(self, app, em, window, m, coord_scale, _3d, line_mat, cdir):
+    def __init__(self, app, em, window, m, coord_scale, _3d, line_mat, line_mat_thick, cdir):
         self.app = app
         self.em = em
         self.m = m
@@ -19,7 +18,13 @@ class Sensor:
         self.coord_scale = coord_scale
         self._3d = _3d
         self.line_mat = line_mat
+        self.line_mat_thick = line_mat_thick
+
         self.window = window
+
+        self.point_mat = o3d.visualization.rendering.MaterialRecord()
+        self.point_mat.shader = 'defaultUnlit'
+        self.point_mat.point_size = 8.0
 
         self.reference_point = [52.070378, -0.628175, 0]  # reference point for ENU coordinate frame
 
@@ -40,7 +45,7 @@ class Sensor:
 
         self.checkboxes.add_child(self.checkbox_sensor)
 
-        self.sensor_data_button = gui.Button('Show Data')
+        self.sensor_data_button = gui.Button('Show Stream')
         self.sensor_data_button.vertical_padding_em = 0
         self.sensor_data_button.enabled = False
         self.sensor_data_button.set_on_clicked(self._on_show_sensor_button)
@@ -109,10 +114,10 @@ class Sensor:
         if is_checked:
             # plot sensor range bounding boxes
             sensors_name = list(self.sensor_data.keys())
-            for sensor_i in sensors_name:
-                circlePoints, sensor_lines = self.generate_sensor_range(self.sensor_data[sensor_i])
+            for sensor_name in sensors_name:
+                circlePoints, sensor_lines = self.generate_sensor_range(self.sensor_data[sensor_name])
 
-                sensor_type = self.sensor_data[sensor_i]['model']
+                sensor_type = self.sensor_data[sensor_name]['model']
 
                 if sensor_type == 'camera':
                     color = [0.14, 0.8, 0.64]
@@ -131,13 +136,12 @@ class Sensor:
                 sensor_i_set.colors = o3d.utility.Vector3dVector(colors)
 
                 self.sensor_line_set.append(sensor_i_set)
-
-                self._3d.scene.add_geometry(f'sensor_{sensor_i}', sensor_i_set, self.line_mat)
+                self._3d.scene.add_geometry(f'sensor_{sensor_name}', sensor_i_set, self.line_mat)
 
         else:
             sensors_name = list(self.sensor_data.keys())
-            for sensor_i in sensors_name:
-                self._3d.scene.remove_geometry(f'sensor_{sensor_i}')
+            for sensor_name in sensors_name:
+                self._3d.scene.remove_geometry(f'sensor_{sensor_name}')
             for sensor_line_set in self.sensor_line_set:
                 sensor_line_set.clear()
                 sensor_line_set = None
@@ -272,104 +276,214 @@ class Sensor:
 
     def _on_show_sensor_button(self):
         # show new window for real-time data streaming
-        self.subwindow_sensor_render = self.app.create_window("Sensor Stream", 720, 480)
+        self.subwindow_sensor_render = self.app.create_window("Sensor Stream", 1080, 420)
 
         self.subwindow_opened = True
         self.subwindow_sensor_render.set_on_close(self._on_redner_window_closing)
 
-        self._panel = gui.Vert()
-        self._panel.background_color = o3d.visualization.gui.Color(0.21, 0.22, 0.25, 1.0)
-        self.subwindow_sensor_render.add_child(self._panel)
+        self.sensor_names = list(self.sensor_data.keys())
+        self.n_sensors = len(self.sensor_names)
+        self._3d_wins = [gui.SceneWidget() for _ in range(self.n_sensors)]
+        for i in range(self.n_sensors):
+            self._3d_wins[i].scene = o3d.visualization.rendering.Open3DScene(self.subwindow_sensor_render.renderer)
+            self._3d_wins[i].scene.set_background([0.5, 0.5, 0.5, 1.0])
+            self._3d_wins[i].scene.show_axes(True)
+            bounds = self._3d_wins[i].scene.bounding_box
+            center = bounds.get_center()
+            self._3d_wins[i].setup_camera(60, bounds, center)
+            self._3d_wins[i].look_at([0, 0, 0], [0, 0, 100], [0, 1, 0])
 
-        self.vgrids = gui.VGrid(2)
-        self._panel.add_child(self.vgrids)
+        for i in range(self.n_sensors):
+            self.subwindow_sensor_render.add_child(self._3d_wins[i])
 
-        data = np.ones((1080, 1920, 3)) * 255
-        u_v = [100, 1000]
-        data[u_v[1] - 10:u_v[1] + 10, u_v[0] - 10:u_v[0] + 10, :] = np.asarray([255, 0, 0])
-
-        self.image1 = gui.ImageWidget(o3d.geometry.Image(data.astype(np.uint8)))
-        self.image2 = gui.ImageWidget(o3d.geometry.Image(data.astype(np.uint8)))
-
-        self.vgrids.add_child(self.image1)
-        self.vgrids.add_child(self.image2)
+        self.subwindow_sensor_render.set_on_layout(self._subwin_on_layout)
 
         # initialize sensors transformation matrix at first
-        sensors_name = list(self.sensor_data.keys())
-        for sensor_i in sensors_name:
-            sensor_transform = self.sensor_transform(self.sensor_data[sensor_i])
-            self.sensor_data[sensor_i]['world2sensor'] = sensor_transform
-        # aircraft_point = [52.067125, -0.628101, 4]
-        # aircraft_point = [52.066278, -0.629643, 4]
-        # aircraft_point = [self.current_lat[0], self.current_lon[0], self.current_alt[0] * 0.3048]
-        # for sensor_i in sensors_name:
-        #     sensor_transform = self.sensor_transform(self.sensor_data[sensor_i])
-        #     point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
-        #                                                  self.sensor_data[sensor_i])
-        #     print(f'point in {sensor_i}: {point_in_sensor}')
+        for _idx, sensor_name in enumerate(self.sensor_names):
+            sensor_transform = self.sensor_transform(self.sensor_data[sensor_name])
+            self.sensor_data[sensor_name]['world2sensor'] = sensor_transform
+
+            # initialize sensor boundary
+            if self.sensor_data[sensor_name]['model'] == 'camera':
+                camera_bound_lineset, o3d_cam_focus = self.camera_container(self.sensor_data[sensor_name])
+                self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_bound', camera_bound_lineset,
+                                                       self.line_mat_thick)
+                self._3d_wins[_idx].look_at([o3d_cam_focus[0], o3d_cam_focus[1], 0],
+                                            [o3d_cam_focus[0], o3d_cam_focus[1], 100],
+                                            [0, 1, 0])
+                self._3d_wins[_idx].set_on_mouse(self._on_mouse_view2d)
+
+            if self.sensor_data[sensor_name]['model'] == 'radar':
+                radar_bound_lineset0, o3d_cam_focus = self.radar_container(self.sensor_data[sensor_name])
+                self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_bound', radar_bound_lineset0,
+                                                       self.line_mat_thick)
+                self._3d_wins[_idx].look_at([o3d_cam_focus[0], o3d_cam_focus[1], 0],
+                                            [o3d_cam_focus[0], o3d_cam_focus[1], 90],
+                                            [0, 1, 0])
+                self._3d_wins[_idx].set_on_mouse(self._on_mouse_view2d)
+
+    def _subwin_on_layout(self, context=None):
+        frame = self.subwindow_sensor_render.content_rect
+        grid_col = 3
+        # https://stackoverflow.com/questions/2356501/how-do-you-round-up-a-number
+        grid_row = self.n_sensors // grid_col + (self.n_sensors % grid_col > 0)
+
+        grid_w = frame.width / grid_col
+        grid_h = frame.height / grid_row
+
+        for i in range(self.n_sensors):
+            row_i = i // grid_col
+            col_i = i % grid_col
+            self._3d_wins[i].frame = gui.Rect(frame.x + col_i * grid_w + 1,
+                                              frame.y + row_i * grid_h + 1,
+                                              grid_w - 1,
+                                              grid_h - 1)
 
     def _on_redner_window_closing(self):
         self.subwindow_opened = False
         return True
 
-    def update_aircraft_information(self, lats, lons, alts, hdgs, ntraf):
-        self.current_lat = lats
-        self.current_lon = lons
-        self.current_alt = alts
-        self.current_hdg = hdgs
-        self.ntraf = ntraf
+    @staticmethod
+    def camera_container(sensor_i_data):
+        # 0,1080 ----------------------------- 1920, 1080
+        #  |                                      |
+        #  |                                      |
+        # 0,0  ------------------------------- 1920, 0
 
-        if self.ntraf > 0:
-            sensors_name = list(self.sensor_data.keys())
-            aircraft_point = [self.current_lat[0], self.current_lon[0], self.current_alt[0]]
-            for sensor_i in sensors_name:
-                sensor_transform = self.sensor_data[sensor_i]['world2sensor']
-                point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
-                                                             self.sensor_data[sensor_i])
-                print(f'point in {sensor_i}: {point_in_sensor}')
-            print('-' * 50)
+        width = sensor_i_data['intrinsic']['img_width'] / 10  # 1920
+        height = sensor_i_data['intrinsic']['img_height'] / 10  # 1080
+
+        points = [[0, 0, 0], [0, height, 0], [width, height, 0], [width, 0, 0]]
+        lines = [[0, 1], [1, 2], [2, 3], [3, 0]]
+        colors = [[0, 0, 1] for _ in range(len(lines))]
+
+        camera_bound_lineset = o3d.geometry.LineSet(
+            points=o3d.utility.Vector3dVector(points),
+            lines=o3d.utility.Vector2iVector(lines),
+        )
+        camera_bound_lineset.colors = o3d.utility.Vector3dVector(colors)
+        o3d_cam_focus = [width / 2, height / 2]
+
+        return camera_bound_lineset, o3d_cam_focus
+
+    @staticmethod
+    def radar_container(sensor_i_data):
+        #  fov, range
+        radius = sensor_i_data['intrinsic']['range']
+
+        alt = 0  # set alt to 0 for plotting
+
+        fov = sensor_i_data['intrinsic']['horizontal_fov']
+
+        assert fov <= 360
+
+        angle_left = - fov / 2
+        angle_right = fov / 2
+
+        # parameters
+        N = fov * 2  # number of discrete sample points to be generated along the circle
+        theta = np.linspace(angle_left, angle_right, N)
+
+        # generate points
+        circlePoints = []
+
+        if fov != 360:
+            circlePoints.append([0, 0, 0])  # append center points at first
+
+        for k in range(N):
+            # compute
+            angle = np.deg2rad(theta[k])
+            x = radius * np.cos(angle)
+            y = radius * np.sin(angle)
+            point = [x, y, 0]
+            # add to list
+            circlePoints.append(point)
+
+        if fov != 360:
+            circlePoints.append([0, 0, alt])  # append center points at last
+
+        lines = []
+        for i in range(len(circlePoints) - 1):
+            lines.append([i, i + 1])
+
+        colors = [[0, 0, 1] for _ in range(len(lines))]
+
+        radar_bound_lineset = o3d.geometry.LineSet(
+            points=o3d.utility.Vector3dVector(circlePoints),
+            lines=o3d.utility.Vector2iVector(lines),
+        )
+        radar_bound_lineset.colors = o3d.utility.Vector3dVector(colors)
+
+        angle = np.deg2rad(theta[0])
+        width = radius * np.cos(angle)
+        o3d_cam_focus = [radius / 2, 0]
+
+        return radar_bound_lineset, o3d_cam_focus
+
+    def _on_mouse_view2d(self, event):
+        return gui.Widget.EventCallbackResult.CONSUMED
 
     def update_sensor_stream(self):
         """
 
         """
-        self.update_aircraft_information(bs.traf.lat, bs.traf.lon, bs.traf.alt, bs.traf.hdg, bs.traf.ntraf)
+        self.current_lat = bs.traf.lat
+        self.current_lon = bs.traf.lon
+        self.current_alt = bs.traf.alt
+        self.current_hdg = bs.traf.hdg
+        self.ntraf = bs.traf.ntraf
 
         if self.ntraf > 0:
             aircraft_point = [self.current_lat[0], self.current_lon[0], self.current_alt[0]]
-            sensor_transform = self.sensor_transform(self.sensor_data['camera12'])
-            point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform, self.sensor_data['camera12'])
 
-            data = np.ones((1080, 1920, 4)) * 255
-            u_v = point_in_sensor
+            for _idx, sensor_name in enumerate(self.sensor_names):
+                # remove geometry of last frame at first
+                try:
+                    self._3d_wins[_idx].scene.remove_geometry(f'{sensor_name}_points')
+                except:
+                    pass
 
-            if u_v is not None and u_v:
-                data[u_v[1] - 10:u_v[1] + 10, u_v[0] - 10:u_v[0] + 10, :] = np.asarray([255, 0, 0, 255])
+                # project targets into each sensor frame
+                sensor_transform = self.sensor_data[sensor_name]['world2sensor']
+                point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
+                                                             self.sensor_data[sensor_name])
+                print(f'point in {sensor_name}: {point_in_sensor}')
 
-            self.image1.update_image(o3d.geometry.Image(data.astype(np.uint8)))
+                # camera
+                if self.sensor_data[sensor_name]['model'] == 'camera' and point_in_sensor is not None:
+                    # point_in_sensor = [u,v]
+                    xyz = self.uv2xyz(point_in_sensor)
+                    xyz = [xyz]
 
-    def matplot2img(self, ax, fig, u_v=None):
-        # ax.cla()
-        # ax.set_xlim(0, 1920)
-        # ax.set_ylim(1080, 0)
-        # data = np.ones((1080, 1920, 3))
-        # ax.imshow(data, interpolation='nearest')
-        # if u_v is not None and u_v:
-        #     ax.plot(u_v[0], u_v[1], marker='o', c='r')
-        # ax.set_yticklabels([])
-        # ax.set_xticklabels([])
-        #
-        # fig.add_axes(ax)
-        # fig.canvas.draw()
-        # # this rasterized the figure
-        # X = np.array(self.fig.canvas.renderer._renderer)
-        data = np.ones((1080, 1920, 4)) * 255
-        # u_v = [100, 1000]
+                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz))
+                    target_point_set.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(xyz))])
+                    self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_points', target_point_set, self.point_mat)
 
-        if u_v is not None and u_v:
-            data[u_v[1] - 10:u_v[1] + 10, u_v[0] - 10:u_v[0] + 10, :] = np.asarray([255, 0, 0, 255])
+                if self.sensor_data[sensor_name]['model'] == 'radar' and point_in_sensor is not None:
+                    # point_in_sensor = [range,theta]
+                    xyz = self.polar2xyz(point_in_sensor)
+                    xyz = [xyz]
 
-        return data
+                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz))
+                    target_point_set.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(xyz))])
+                    self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_points', target_point_set, self.point_mat)
+
+            print('-' * 50)
+
+    @staticmethod
+    def uv2xyz(u_v):
+        x = u_v[0] / 10
+        y = 108 - u_v[1] / 10
+        z = 0
+        return [x, y, z]
+
+    @staticmethod
+    def polar2xyz(range_theta):
+        x = range_theta[0] * np.cos(np.deg2rad(range_theta[1]))
+        y = range_theta[0] * np.sin(np.deg2rad(range_theta[1]))
+        z = 0  # plot view
+
+        return [x, y, z]
 
     def _on_load_button(self):
         filedlg = gui.FileDialog(gui.FileDialog.OPEN, "Select file",
@@ -529,18 +643,16 @@ class Sensor:
                                       self.reference_point[0], self.reference_point[1], self.reference_point[2])
         sensor_pt = np.array([[sensor_pt[0]], [sensor_pt[1]], [sensor_pt[2]], [1]])  # 4x1
 
-        pt_in_sensor = np.dot(world2sensor, sensor_pt)  # 3d; 4x1 [x,y,z,1]
+        pt_in_sensor = np.dot(world2sensor, sensor_pt)  # 3d; 4x1 [[x],[y],[z],[1]]
 
         # project to sensor plane
         if sensor_i_data['model'] == 'lidar':
-            pt_in_sensor = pt_in_sensor[0:3]
-
+            pt_in_sensor = [pt_in_sensor[0][0], pt_in_sensor[1][0], pt_in_sensor[2][0]]  # convert nested array to list
             range = sensor_i_data['intrinsic']['range']
-
             dist = np.sqrt(pt_in_sensor[0] ** 2 + pt_in_sensor[1] ** 2 + pt_in_sensor[2] ** 2)
-
             if dist > range:
                 pt_in_sensor = None
+
         elif sensor_i_data['model'] == 'camera':
 
             # Build the K projection matrix:
@@ -567,10 +679,8 @@ class Sensor:
             #            |/                      |
             # y <------- +                       v y
             # (x, y, z) --> (-y, -z, x)
-            # point_in_camera_coords = np.array([
-            #     pt_in_sensor[0],
-            #     pt_in_sensor[2] * -1,
-            #     pt_in_sensor[1]])
+            dist = np.sqrt(pt_in_sensor[0] ** 2 + pt_in_sensor[1] ** 2 + pt_in_sensor[2] ** 2)
+            print(f'dist: {dist}')
 
             point_in_camera_coords = np.array([
                 pt_in_sensor[1] * -1,
@@ -602,7 +712,7 @@ class Sensor:
             u = list(u)
             v = list(v)
 
-            if not u or not v:
+            if not u or not v or dist[0] > 300:
                 pt_in_sensor = None
 
             # =========================================
@@ -612,6 +722,9 @@ class Sensor:
 
                 pt_in_sensor = [u, v]
             # =============================================
+
+            if dist[0] > 300:
+                pt_in_sensor = None
 
         elif sensor_i_data['model'] == 'radar':
             if 0 < pt_in_sensor[0] < 0.001:
@@ -625,7 +738,7 @@ class Sensor:
                 horizontal_fov = sensor_i_data['intrinsic']['horizontal_fov']
                 range = sensor_i_data['intrinsic']['range']
 
-                pt_in_sensor = [r, theta]  # [meter, degree]
+                pt_in_sensor = [r[0], theta[0]]  # [meter, degree]
 
                 if r < 0 or r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2:
                     r, theta = None, None  # out of detection region

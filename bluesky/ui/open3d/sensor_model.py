@@ -72,6 +72,16 @@ def save():
                                           'pitch': 0, 'yaw': -140, 'roll': 0},
                             'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
                             },
+               'camera13': {'model': 'camera',
+                            'extrinsic': {'latitude': pole13[0], 'longitude': pole13[1], 'altitude': 4.0,
+                                          'pitch': 0, 'yaw': 40, 'roll': 0},
+                            'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
+                            },
+               'camera14': {'model': 'camera',
+                            'extrinsic': {'latitude': pole14[0], 'longitude': pole14[1], 'altitude': 4.0,
+                                          'pitch': 0, 'yaw': -160, 'roll': 0},
+                            'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
+                            },
                'radar11': {'model': 'radar',
                            'extrinsic': {'latitude': pole11[0], 'longitude': pole11[1], 'altitude': 4.0,
                                          'pitch': 0, 'yaw': -140, 'roll': 0},
@@ -212,9 +222,9 @@ def test_transform():
 
 
 if __name__ == '__main__':
-    # save()
-    # load()
-    t0 = time.time()
-    test_transform()
-    t1 = time.time()
-    print(t1-t0)
+    save()
+    load()
+    # t0 = time.time()
+    # test_transform()
+    # t1 = time.time()
+    # print(t1-t0)
