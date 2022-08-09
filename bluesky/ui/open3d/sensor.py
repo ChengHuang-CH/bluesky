@@ -680,7 +680,7 @@ class Sensor:
             # y <------- +                       v y
             # (x, y, z) --> (-y, -z, x)
             dist = np.sqrt(pt_in_sensor[0] ** 2 + pt_in_sensor[1] ** 2 + pt_in_sensor[2] ** 2)
-            print(f'dist: {dist}')
+            # print(f'dist: {dist}')
 
             point_in_camera_coords = np.array([
                 pt_in_sensor[1] * -1,

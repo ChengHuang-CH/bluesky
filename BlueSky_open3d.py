@@ -29,6 +29,8 @@ def update():
         if bs.scr.is_done:
             print(f'Quit the process')
             bs.sim.quit()
+            if bs.scr.sensor.subwindow_opened:
+                bs.scr.sensor.subwindow_sensor_render.close()
             break
         else:
             bs.scr.app.post_to_main_thread(bs.scr.window, bs.scr.update)
