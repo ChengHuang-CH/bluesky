@@ -979,7 +979,7 @@ class BlueSky3dUI:
             )
             self.osm_roads_set.colors = o3d.utility.Vector3dVector(colors)
 
-            # self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat_thin)
+            self._3d.scene.add_geometry("osm_roads_set", self.osm_roads_set, self.line_mat_thin)
             self._3d.scene.add_geometry("osm_building_set", self.osm_building_set, self.line_mat_thick)
 
             t2 = time.time()

@@ -7,6 +7,7 @@ import pyproj
 import os
 
 import bluesky as bs
+from bluesky.tools.misc import tim2txt
 
 
 class Sensor:
@@ -68,19 +69,21 @@ class Sensor:
         self.load_button.vertical_padding_em = 0
         self.load_button.set_on_clicked(self._on_load_button)
 
-        self.export_button = gui.Button('Save')
-        self.export_button.vertical_padding_em = 0
-        self.export_button.enabled = False
-        # self.export_button.set_on_clicked(self._on_export_button)
-
         self.create_button = gui.Button('Create')
         self.create_button.vertical_padding_em = 0
         self.create_button.enabled = True
         self.create_button.set_on_clicked(self._on_create_new_window)
 
+        self.record_button = gui.Button('Record')
+        self.record_button.vertical_padding_em = 0
+        self.record_button.enabled = False
+        self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
+        self.record = False  # initially set button to record
+        self.record_button.set_on_clicked(self._on_save_stop_button)
+
         self.save_load.add_child(self.load_button)
-        self.save_load.add_child(self.export_button)
         self.save_load.add_child(self.create_button)
+        self.save_load.add_child(self.record_button)
 
         self.sensor_control.add_child(self.save_load)
 
@@ -109,6 +112,8 @@ class Sensor:
         self.current_alt = None
         self.current_hdg = None
         self.ntraf = None
+
+        self.file_to_save = None
 
     def _on_check_sensor(self, is_checked):
         if is_checked:
@@ -153,6 +158,17 @@ class Sensor:
         self.rotation_vedit.vector_value = [extrinsic['pitch'], extrinsic['yaw'], extrinsic['roll']]
 
         print(new_val, self.translation_vedit.vector_value)
+
+    def _on_save_stop_button(self):
+        if not self.record:  # start recording. the set button text to stop for next click
+            self.record = True
+            self.record_button.background_color = gui.Color(0.2, 0.0, 0.0)
+            self.record_button.text = 'Stop'
+        else:
+            # stop recording. then reset button to start
+            self.record = False
+            self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
+            self.record_button.text = 'Record'
 
     def _on_create_new_window(self):
         # show new window
@@ -447,7 +463,11 @@ class Sensor:
                 sensor_transform = self.sensor_data[sensor_name]['world2sensor']
                 point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
                                                              self.sensor_data[sensor_name])
-                print(f'point in {sensor_name}: {point_in_sensor}')
+                print(f'[{tim2txt(bs.sim.simt)}] point in {sensor_name}: {point_in_sensor}')
+
+                if self.record:
+                    # save data and append to files
+                    print('recording')
 
                 # camera
                 if self.sensor_data[sensor_name]['model'] == 'camera' and point_in_sensor is not None:
@@ -510,6 +530,7 @@ class Sensor:
         if sensor_names:
             self.checkbox_sensor.enabled = True  # enable checkbox after loading valid sensors
             self.sensor_data_button.enabled = True
+            self.record_button.enabled = True
 
         os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
 
@@ -727,9 +748,11 @@ class Sensor:
                 pt_in_sensor = None
 
         elif sensor_i_data['model'] == 'radar':
-            if 0 < pt_in_sensor[0] < 0.001:
-                r, theta = 0, 0
-                pt_in_sensor = [r, theta]  # [meter, degree]
+            # pt_in_sensor: 4x1 [[x],[y],[z],[1]]
+            pt_in_sensor = pt_in_sensor.squeeze(axis=1)  # 4x1 [[x],[y],[z],[1]] -> 4 [x,y,z,1]
+            x = pt_in_sensor[0]
+            if pt_in_sensor[0] < 0.001:  # include negative
+                pt_in_sensor = None
             else:
                 r = np.sqrt(pt_in_sensor[0] ** 2 + pt_in_sensor[1] ** 2)
                 theta = np.arctan(pt_in_sensor[1] / pt_in_sensor[0])
@@ -738,9 +761,9 @@ class Sensor:
                 horizontal_fov = sensor_i_data['intrinsic']['horizontal_fov']
                 range = sensor_i_data['intrinsic']['range']
 
-                pt_in_sensor = [r[0], theta[0]]  # [meter, degree]
+                pt_in_sensor = [r, theta]  # [meter, degree]
 
-                if r < 0 or r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2:
+                if r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2:
                     r, theta = None, None  # out of detection region
                     pt_in_sensor = None
 

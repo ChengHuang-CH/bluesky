@@ -74,7 +74,7 @@ def save():
                             },
                'camera13': {'model': 'camera',
                             'extrinsic': {'latitude': pole13[0], 'longitude': pole13[1], 'altitude': 4.0,
-                                          'pitch': 0, 'yaw': 40, 'roll': 0},
+                                          'pitch': 0, 'yaw': 70, 'roll': 0},
                             'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
                             },
                'camera14': {'model': 'camera',
@@ -87,16 +87,27 @@ def save():
                                          'pitch': 0, 'yaw': -140, 'roll': 0},
                            'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
                            },
+
+               'lidar11': {'model': 'lidar',
+                           'extrinsic': {'latitude': pole11[0], 'longitude': pole11[1], 'altitude': 4.0,
+                                         'pitch': 0, 'yaw': 90, 'roll': 0},
+                           'intrinsic': {'horizontal_fov': 270, 'upper_fov': 10, 'lower_fov': -30, 'range': 100}
+                           },
                'radar14': {'model': 'radar',
                            'extrinsic': {'latitude': pole14[0], 'longitude': pole14[1], 'altitude': 4.0,
                                          'pitch': 0, 'yaw': 60, 'roll': 0},
                            'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
                            },
-               'lidar11': {'model': 'lidar',
-                           'extrinsic': {'latitude': pole11[0], 'longitude': pole11[1], 'altitude': 4.0,
-                                         'pitch': 0, 'yaw': 90, 'roll': 0},
-                           'intrinsic': {'horizontal_fov': 270, 'upper_fov': 10, 'lower_fov': -30, 'range': 100}
-                           }
+               'radar18': {'model': 'radar',
+                           'extrinsic': {'latitude': pole18[0], 'longitude': pole18[1], 'altitude': 4.0,
+                                         'pitch': 0, 'yaw': 20, 'roll': 0},
+                           'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
+                           },
+               'camera19': {'model': 'camera',
+                            'extrinsic': {'latitude': pole19[0], 'longitude': pole19[1], 'altitude': 8.0,
+                                          'pitch': 0, 'yaw': -10, 'roll': 0},
+                            'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 30, 'range': None}
+                            },
                }
     with open('../../../data/osm/sensor_config.json', 'w') as f:
         json.dump(sensors, f)
