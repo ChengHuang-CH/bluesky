@@ -5,6 +5,8 @@ import numpy as np
 import scipy.spatial.transform
 import pyproj
 import os
+import csv
+from datetime import datetime
 
 import bluesky as bs
 from bluesky.tools.misc import tim2txt
@@ -46,7 +48,7 @@ class Sensor:
 
         self.checkboxes.add_child(self.checkbox_sensor)
 
-        self.sensor_data_button = gui.Button('Show Stream')
+        self.sensor_data_button = gui.Button('Sensor Stream')
         self.sensor_data_button.vertical_padding_em = 0
         self.sensor_data_button.enabled = False
         self.sensor_data_button.set_on_clicked(self._on_show_sensor_button)
@@ -74,16 +76,8 @@ class Sensor:
         self.create_button.enabled = True
         self.create_button.set_on_clicked(self._on_create_new_window)
 
-        self.record_button = gui.Button('Record')
-        self.record_button.vertical_padding_em = 0
-        self.record_button.enabled = False
-        self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
-        self.record = False  # initially set button to record
-        self.record_button.set_on_clicked(self._on_save_stop_button)
-
         self.save_load.add_child(self.load_button)
         self.save_load.add_child(self.create_button)
-        self.save_load.add_child(self.record_button)
 
         self.sensor_control.add_child(self.save_load)
 
@@ -106,6 +100,7 @@ class Sensor:
         self.sensor_control.add_child(self.rotation_vgrid)
 
         self.sensor_line_set = []
+        self.prev_sensor_names = []
 
         self.current_lat = None
         self.current_lon = None
@@ -160,13 +155,20 @@ class Sensor:
         print(new_val, self.translation_vedit.vector_value)
 
     def _on_save_stop_button(self):
-        if not self.record:  # start recording. the set button text to stop for next click
+        if not self.record:
+            # start recording.
             self.record = True
+            bs.stack.stack('ECHO Start Recording')
+
+            #  then set button text to stop for next call
             self.record_button.background_color = gui.Color(0.2, 0.0, 0.0)
             self.record_button.text = 'Stop'
         else:
-            # stop recording. then reset button to start
+            # stop recording.
             self.record = False
+            bs.stack.stack('ECHO Stop Recording')
+
+            #  then reset button to start for next call
             self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
             self.record_button.text = 'Record'
 
@@ -291,14 +293,29 @@ class Sensor:
         self.sensor_model_list_view.frame = gui.Rect(r.x + r.width / 3 * 2 + 1, r.y, r.width / 3, r.height)
 
     def _on_show_sensor_button(self):
-        # show new window for real-time data streaming
-        self.subwindow_sensor_render = self.app.create_window("Sensor Stream", 1080, 420)
 
-        self.subwindow_opened = True
-        self.subwindow_sensor_render.set_on_close(self._on_redner_window_closing)
-
+        # -------------------------------------------------------------------------
         self.sensor_names = list(self.sensor_data.keys())
         self.n_sensors = len(self.sensor_names)
+
+        self.grid_col = 3
+        # https://stackoverflow.com/questions/2356501/how-do-you-round-up-a-number
+        self.grid_row = self.n_sensors // self.grid_col + (self.n_sensors % self.grid_col > 0)
+
+        self.grid_w = 350  # set static size for each sub-sensor window
+        self.grid_h = 190
+
+        self.sensor_panel_h = self.em * 2
+
+        # show new window for real-time data streaming
+        self.subwindow_sensor_render = self.app.create_window("Sensor Stream",
+                                                              self.grid_w * self.grid_col,
+                                                              self.grid_h * self.grid_row + self.sensor_panel_h)
+
+        self.subwindow_opened = True
+        self.subwindow_sensor_render.set_on_close(self._on_render_window_closing)
+
+        # ------------------ sensor 3d scenes -----------------------------------------------
         self._3d_wins = [gui.SceneWidget() for _ in range(self.n_sensors)]
         for i in range(self.n_sensors):
             self._3d_wins[i].scene = o3d.visualization.rendering.Open3DScene(self.subwindow_sensor_render.renderer)
@@ -312,9 +329,22 @@ class Sensor:
         for i in range(self.n_sensors):
             self.subwindow_sensor_render.add_child(self._3d_wins[i])
 
+        # ------------------ panel for recording ---------------------------------------------
+        self.sensor_panel = gui.Vert(0.5 * self.em, gui.Margins(0, 0.5 * self.em, 0, 0))
+        self.sensor_panel.background_color = o3d.visualization.gui.Color(0.21, 0.22, 0.25, 1.0)
+        self.subwindow_sensor_render.add_child(self.sensor_panel)
+
+        self.record_button = gui.Button('Record')
+        self.record_button.vertical_padding_em = 0
+        self.record_button.enabled = True  # enable the recording button when show stream btn is clicked
+        self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
+        self.record = False  # initial status is not recording; set button to record
+        self.record_button.set_on_clicked(self._on_save_stop_button)
+        self.sensor_panel.add_child(self.record_button)
+
         self.subwindow_sensor_render.set_on_layout(self._subwin_on_layout)
 
-        # initialize sensors transformation matrix at first
+        # -------------------- initialize sensors transformation matrix at first ----------------------
         for _idx, sensor_name in enumerate(self.sensor_names):
             sensor_transform = self.sensor_transform(self.sensor_data[sensor_name])
             self.sensor_data[sensor_name]['world2sensor'] = sensor_transform
@@ -338,25 +368,49 @@ class Sensor:
                                             [0, 1, 0])
                 self._3d_wins[_idx].set_on_mouse(self._on_mouse_view2d)
 
+        # # ----------------------create recording file (2) - when show sensor stream -----------------
+        header = ['timestamp', 'LatLonAlt'] + [name for name in self.sensor_names]
+        current_time = datetime.now()
+        self.file_to_save = current_time.strftime("%Y_%m_%d_%H_%M_%S")
+        # current path is global path
+        with open(f'data/osm/{self.file_to_save}.csv', 'w', encoding='UTF8', newline='') as f:
+            writer = csv.writer(f)
+
+            # write the header
+            writer.writerow(header)
+        # ---------------------------------------------------------------------------------------------
+
     def _subwin_on_layout(self, context=None):
         frame = self.subwindow_sensor_render.content_rect
-        grid_col = 3
-        # https://stackoverflow.com/questions/2356501/how-do-you-round-up-a-number
-        grid_row = self.n_sensors // grid_col + (self.n_sensors % grid_col > 0)
+        # grid_col = 3
+        # # https://stackoverflow.com/questions/2356501/how-do-you-round-up-a-number
+        # grid_row = self.n_sensors // grid_col + (self.n_sensors % grid_col > 0)
+        #
+        # grid_w = frame.width / grid_col
+        # grid_h = frame.height / grid_row
 
-        grid_w = frame.width / grid_col
-        grid_h = frame.height / grid_row
+        # print(grid_w, grid_h)
 
         for i in range(self.n_sensors):
-            row_i = i // grid_col
-            col_i = i % grid_col
-            self._3d_wins[i].frame = gui.Rect(frame.x + col_i * grid_w + 1,
-                                              frame.y + row_i * grid_h + 1,
-                                              grid_w - 1,
-                                              grid_h - 1)
+            row_i = i // self.grid_col
+            col_i = i % self.grid_col
+            self._3d_wins[i].frame = gui.Rect(frame.x + col_i * self.grid_w + 1,
+                                              frame.y + row_i * self.grid_h + 1,
+                                              self.grid_w - 1,
+                                              self.grid_h - 1)
+        self.sensor_panel.frame = gui.Rect(frame.x,
+                                           frame.y + (row_i + 1) * self.grid_h + 1,
+                                           frame.width,
+                                           self.sensor_panel_h)
 
-    def _on_redner_window_closing(self):
+    def _on_render_window_closing(self):
         self.subwindow_opened = False
+
+        if self.record:
+            # if it is still recording data; stop it when closing the sensor stream window
+            self._on_save_stop_button()
+
+        # self.record_button.enabled = False  # disable the recording button when show stream is closed
         return True
 
     @staticmethod
@@ -449,9 +503,13 @@ class Sensor:
         self.current_hdg = bs.traf.hdg
         self.ntraf = bs.traf.ntraf
 
+        save_data = []  # empty for saving only current frame
+
         if self.ntraf > 0:
             aircraft_point = [self.current_lat[0], self.current_lon[0], self.current_alt[0]]
 
+            save_data.append(tim2txt(bs.sim.simt))
+            save_data.append(aircraft_point)
             for _idx, sensor_name in enumerate(self.sensor_names):
                 # remove geometry of last frame at first
                 try:
@@ -463,6 +521,8 @@ class Sensor:
                 sensor_transform = self.sensor_data[sensor_name]['world2sensor']
                 point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
                                                              self.sensor_data[sensor_name])
+
+                save_data.append(point_in_sensor)
                 print(f'[{tim2txt(bs.sim.simt)}] point in {sensor_name}: {point_in_sensor}')
 
                 if self.record:
@@ -489,6 +549,14 @@ class Sensor:
                     self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_points', target_point_set, self.point_mat)
 
             print('-' * 50)
+
+            if self.record:
+                # after cdir. current path is global path
+                with open(f'data/osm/{self.file_to_save}.csv', 'a', encoding='UTF8', newline='') as f:
+                    writer = csv.writer(f)
+
+                    # write the data
+                    writer.writerow(save_data)
 
     @staticmethod
     def uv2xyz(u_v):
@@ -521,6 +589,8 @@ class Sensor:
         # self.export_name_edit.text_value = path
         self.window.close_dialog()
 
+        self.checkbox_sensor.checked = False  # uncheck show sensor boundaries
+
         with open(path, 'r') as data_file:
             self.sensor_data = json.load(data_file)
 
@@ -530,9 +600,37 @@ class Sensor:
         if sensor_names:
             self.checkbox_sensor.enabled = True  # enable checkbox after loading valid sensors
             self.sensor_data_button.enabled = True
-            self.record_button.enabled = True
+
+            # -----------------------------------------------------------------------------------------
+            # try to remove all plotted geometries after loading new config
+            for sensor_name in self.prev_sensor_names:
+                try:
+                    self._3d.scene.remove_geometry(f'sensor_{sensor_name}')
+                except:
+                    continue
+            for sensor_line_set in self.sensor_line_set:
+                try:
+                    sensor_line_set.clear()
+                    sensor_line_set = None
+                except:
+                    pass
+            # ------------------------------------------------------------------------------------------
+
+            # # ----------------------create recording file (1) when load sensor config -----------------
+            # header = ['timestamp', 'LatLonAlt'] + [name for name in self.sensor_names]
+            # current_time = datetime.now()
+            # self.file_to_save = current_time.strftime("%Y_%m_%d_%H_%M_%S")
+            # # after file dialog selection, current path is inside osm folder
+            # with open(f'{self.file_to_save}.csv', 'w', encoding='UTF8', newline='') as f:
+            #     writer = csv.writer(f)
+            #
+            #     # write the header
+            #     writer.writerow(header)
+            # # ------------------------------------------------------------------------------------------
 
         os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
+
+        self.prev_sensor_names = sensor_names  # used for next loading new file
 
     def _on_export_button(self):
         txt_name = self.export_name_edit.text_value

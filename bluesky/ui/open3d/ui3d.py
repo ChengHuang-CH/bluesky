@@ -222,7 +222,7 @@ class BlueSky3dUI:
 
         # sub-panel: console
         self.consoleline = gui.TabControl()
-        self.console = gui.Vert(2.5 * self.em)
+        self.console = gui.Vert(1.5 * self.em)
         self.consoleline.add_tab("Console", self.console)
         self.collapse.add_child(self.consoleline)
         # text color

@@ -64,7 +64,7 @@ def save():
 
     sensors = {'camera10': {'model': 'camera',
                             'extrinsic': {'latitude': pole10[0], 'longitude': pole10[1], 'altitude': 4.0,
-                                          'pitch': 0, 'yaw': -100, 'roll': 0},
+                                          'pitch': 0, 'yaw': -120, 'roll': 0},
                             'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
                             },  # 52.066889, -0.628129
                'camera12': {'model': 'camera',
@@ -88,16 +88,22 @@ def save():
                            'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
                            },
 
-               'lidar11': {'model': 'lidar',
-                           'extrinsic': {'latitude': pole11[0], 'longitude': pole11[1], 'altitude': 4.0,
-                                         'pitch': 0, 'yaw': 90, 'roll': 0},
-                           'intrinsic': {'horizontal_fov': 270, 'upper_fov': 10, 'lower_fov': -30, 'range': 100}
-                           },
+               # 'lidar11': {'model': 'lidar',
+               #             'extrinsic': {'latitude': pole11[0], 'longitude': pole11[1], 'altitude': 4.0,
+               #                           'pitch': 0, 'yaw': 90, 'roll': 0},
+               #             'intrinsic': {'horizontal_fov': 270, 'upper_fov': 10, 'lower_fov': -30, 'range': 100}
+               #             },
                'radar14': {'model': 'radar',
                            'extrinsic': {'latitude': pole14[0], 'longitude': pole14[1], 'altitude': 4.0,
                                          'pitch': 0, 'yaw': 60, 'roll': 0},
                            'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
                            },
+               'radar17': {'model': 'radar',
+                           'extrinsic': {'latitude': pole17[0], 'longitude': pole17[1], 'altitude': 4.0,
+                                         'pitch': 0, 'yaw': -180, 'roll': 0},
+                           'intrinsic': {'horizontal_fov': 30, 'vertical_fov': 10, 'range': 150}
+                           },
+
                'radar18': {'model': 'radar',
                            'extrinsic': {'latitude': pole18[0], 'longitude': pole18[1], 'altitude': 4.0,
                                          'pitch': 0, 'yaw': 20, 'roll': 0},
