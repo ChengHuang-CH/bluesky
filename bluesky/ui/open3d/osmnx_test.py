@@ -5,7 +5,7 @@ from shapely.ops import triangulate
 # ==============================================================
 import numpy as np
 from shapely.geometry import Polygon
-from shapely.ops import triangulate
+# from shapely.ops import triangulate
 from shapely.ops import voronoi_diagram
 import shapely.wkt
 import geopandas as gpd
@@ -17,7 +17,8 @@ import matplotlib.pyplot as plt
 def to_triangles(polygon):
     poly_points = []
 
-    gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(index_parts=True).reset_index()
+    gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(
+        index_parts=True).reset_index()
     for geom in gdf_poly_exterior.geometry:
         poly_points += np.array(geom.coords).tolist()
 
@@ -71,20 +72,22 @@ index = bulding_names.index('Building 83')
 polygon = building_geos[index]
 fig, ax = ox.plot_footprints(buildings)
 
-to_triangles(polygon)
+# to_triangles(polygon)
 
 x, y = polygon.exterior.xy
 coords = list(polygon.exterior.coords)
+
+
 # print(x, y)
 # plt.plot(x, y)
 # plt.show()
-
-
+#
+#
 # triangles = triangulate(polygon)
 # print([triangle for triangle in triangles])
 # for triangle in triangles:
 #     plt.plot(*triangle.exterior.xy)
-
+#
 # print([triangle.wkt for triangle in triangles])
 # triangles_gdf = gpd.GeoDataFrame()
 # triangles_gdf.geometry = triangles

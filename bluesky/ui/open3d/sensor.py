@@ -6,6 +6,7 @@ import scipy.spatial.transform
 import pyproj
 import os
 import csv
+import glob
 from datetime import datetime
 
 import bluesky as bs
@@ -65,7 +66,7 @@ class Sensor:
         self.sensor_control.add_child(self.sensor_list)
 
         # load and save existed sensor configuration
-        self.save_load = gui.Horiz(spacing=6)
+        self.save_load = gui.Horiz(spacing=2)
 
         self.load_button = gui.Button('Load')
         self.load_button.vertical_padding_em = 0
@@ -76,8 +77,17 @@ class Sensor:
         self.create_button.enabled = True
         self.create_button.set_on_clicked(self._on_create_new_window)
 
+        self.combo_files = gui.Combobox()
+        self.combo_files.add_item("Select/Refresh")
+        self.sensor_json_path = 'data/osm'
+        self.sensor_json_files = sorted(glob.glob(f'{self.sensor_json_path}/*.json'))
+        for sensor_json_file in self.sensor_json_files:
+            self.combo_files.add_item(sensor_json_file)
+        self.combo_files.set_on_selection_changed(self._on_sensor_json_combo)
+
         self.save_load.add_child(self.load_button)
         self.save_load.add_child(self.create_button)
+        self.save_load.add_child(self.combo_files)
 
         self.sensor_control.add_child(self.save_load)
 
@@ -171,6 +181,33 @@ class Sensor:
             #  then reset button to start for next call
             self.record_button.background_color = gui.Color(0.0, 0.2, 0.0)
             self.record_button.text = 'Record'
+
+    def _on_sensor_json_combo(self, new_val, new_idx):
+        # scan and refresh the folder
+        osm_files = sorted(glob.glob(f'{self.sensor_json_path}/*.json'))
+        for name in osm_files:
+            if name not in self.sensor_json_files:
+                self.sensor_json_files.append(name)
+                self.combo_files.add_item(name)
+
+        self.checkbox_sensor.checked = False
+        self._on_check_sensor(False)  # remove drawn objects from canvas for any new selection.
+
+        if new_idx == 0:
+            self.checkbox_sensor.enabled = False  # (1) not show sensor
+            self.sensor_data_button.enabled = False  # (2) disable sensor stream button after show sensor is disabled
+            self.sensor_list.set_items([])  # (3) empty sensor list in ListView
+            bs.stack.stack("ECHO Refresh sensor config file list.")
+
+        # selection
+        if new_idx != 0:
+            self._load_sensor_file(new_val)
+
+            self.checkbox_sensor.enabled = True  # the checkbox can be ticked when a file is selected.
+
+            bs.stack.stack(f'ECHO Sensor config {new_val} lodaded.')
+
+        print(f'selected file: {new_val, new_idx}')
 
     def _on_create_new_window(self):
         # show new window
@@ -591,11 +628,16 @@ class Sensor:
 
         self.checkbox_sensor.checked = False  # uncheck show sensor boundaries
 
+        self._load_sensor_file(path)
+
+        os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
+
+    def _load_sensor_file(self, path):
         with open(path, 'r') as data_file:
             self.sensor_data = json.load(data_file)
 
         sensor_names = list(self.sensor_data.keys())
-        self.sensor_list.set_items(sensor_names)
+        self.sensor_list.set_items(sensor_names)  # add sensor list to ListView
 
         if sensor_names:
             self.checkbox_sensor.enabled = True  # enable checkbox after loading valid sensors
@@ -627,9 +669,6 @@ class Sensor:
             #     # write the header
             #     writer.writerow(header)
             # # ------------------------------------------------------------------------------------------
-
-        os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
-
         self.prev_sensor_names = sensor_names  # used for next loading new file
 
     def _on_export_button(self):

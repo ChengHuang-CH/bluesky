@@ -148,7 +148,7 @@ class BlueSky3dUI:
         self.checkbox_fir.set_on_checked(self._on_check_fir)
         self.tab1.add_child(self.checkbox_fir)
 
-        self.tab2 = gui.Vert()
+        self.tab2 = gui.Vert(0.5 * self.em, gui.Margins(0, 0, 0, 0))
         # self.tab2.add_stretch()
         self.tabs.add_tab("Mode", self.tab2)
         self.collapse.add_child(self.tabs)
@@ -169,6 +169,33 @@ class BlueSky3dUI:
         fileedit_layout.add_child(filedlgbutton)
         # add to the top-level (vertical) layout
         self.tab2.add_child(fileedit_layout)
+
+        # hold, op. reset
+        self.hold_op_btns = gui.Horiz(0.5 * self.em, gui.Margins(0, 0, 0, 0))
+
+        self.op_btn = gui.Button("OP")
+        self.op_btn.horizontal_padding_em = 0.5
+        self.op_btn.vertical_padding_em = 0
+        self.op_btn.background_color = gui.Color(0.0, 0.2, 0.0)
+        self.op_btn.set_on_clicked(self._on_op_button)
+
+        self.hold_btn = gui.Button("HOLD")
+        self.hold_btn.horizontal_padding_em = 0.5
+        self.hold_btn.vertical_padding_em = 0
+        self.hold_btn.background_color = gui.Color(0.2, 0.2, 0.0)
+        self.hold_btn.set_on_clicked(self._on_hold_button)
+
+        self.reset_btn = gui.Button("RESET")
+        self.reset_btn.horizontal_padding_em = 0.5
+        self.reset_btn.vertical_padding_em = 0
+        self.reset_btn.background_color = gui.Color(0.2, 0.0, 0.0)
+        self.reset_btn.set_on_clicked(self._on_reset_button)
+
+        self.hold_op_btns.add_child(self.op_btn)
+        self.hold_op_btns.add_child(self.hold_btn)
+        self.hold_op_btns.add_child(self.reset_btn)
+
+        self.tab2.add_child(self.hold_op_btns)
 
         # sub-panel: uam configuration
         self.uam_config_tab = gui.TabControl()
@@ -228,7 +255,7 @@ class BlueSky3dUI:
         # text color
         self.red = gui.Color(1.0, 0.0, 0.0)
         self.orange = gui.Color(1.0, 0.5, 0.0)
-        self.green = gui.Color(0.0, 1.0, 0.0)
+        self.green = gui.Color(0.0, 0.8, 0.0)
         # keep 3 line history context
         self._lines_text = ['>> ', '>> ', '>> ']
         self._line1 = gui.Label(self._lines_text[0])
@@ -601,7 +628,9 @@ class BlueSky3dUI:
 
                 label_text = f'{bs.traf.id[i]} \n ' \
                              f'{alt_text} \n' \
-                             f'{int(round(bs.traf.cas[i] / kts))}'
+                             f'{round(bs.traf.cas[i]):.1f} m/s'
+                             # f'{int(round(bs.traf.cas[i] / kts))} knots' \
+
                 label3d = self._3d.add_3d_label([x, y, 0], label_text)
                 label3d.color = text_color
                 self.aircraft_labels.append(label3d)
@@ -850,39 +879,6 @@ class BlueSky3dUI:
 
         print(f'selected file: {new_val, new_idx}')
 
-    def to_triangles(self, polygon):
-        import geopandas as gpd
-        from geovoronoi import voronoi_regions_from_coords
-
-        poly_points = []
-
-        gdf_poly_exterior = gpd.GeoDataFrame({'geometry': [polygon.buffer(-0.0000001).exterior]}).explode(
-            index_parts=True).reset_index()
-        for geom in gdf_poly_exterior.geometry:
-            poly_points += np.array(geom.coords).tolist()
-
-        try:
-            polygon.interiors[0]
-        except:
-            poly_points = poly_points
-        else:
-            gdf_poly_interior = gpd.GeoDataFrame({'geometry': [polygon.interiors]}).explode(
-                index_parts=True).reset_index()
-            for geom in gdf_poly_interior.geometry:
-                poly_points += np.array(geom.coords).tolist()
-
-        poly_points = np.array([item for sublist in poly_points for item in sublist]).reshape(-1, 2)
-
-        poly_shapes, pts = voronoi_regions_from_coords(poly_points, polygon)
-        gdf_poly_voronoi = gpd.GeoDataFrame({'geometry': poly_shapes}).explode(index_parts=True).reset_index()
-
-        tri_geom = []
-        for geom in gdf_poly_voronoi.geometry:
-            inside_triangles = [tri for tri in triangulate(geom) if tri.centroid.within(polygon)]
-            tri_geom += inside_triangles
-
-        return tri_geom
-
     def _on_check_osm(self, checked):
         if checked:
             geometry = self.osm_building_data['geometry'].tolist()
@@ -1000,6 +996,15 @@ class BlueSky3dUI:
                 self._3d.scene.remove_geometry("osm_roads_set")
                 self.osm_roads_set.clear()
                 self.osm_roads_set = None
+
+    def _on_op_button(self):
+        stack.stack("OP")
+
+    def _on_hold_button(self):
+        stack.stack("HOLD")
+
+    def _on_reset_button(self):
+        stack.stack("RESET")
 
     def _on_filedlg_button(self):
         self.file_done = False  # reset the selection status for next usage.
