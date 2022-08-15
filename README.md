@@ -1,3 +1,21 @@
+#### This folk extends the BlueSky with new Open3D interface and add some new features for Urban Air Mobility (UAM) research.
+
+#### - Run `python3 Bluesky_open3d.py`
+
+New features (WIP):
+- (1). New interface written by Open3D
+- (2). Load and draw OpenStreetMap (.osm) file to visualize urban buildings and street roads.
+![](data/graphics/open3d_snapshots.png)
+
+- (3). Add ground sensors for ground-based communication, navigation and surveillance (CNS)
+![](data/graphics/sensor_view.png)
+- (4). Visualize and record real-time sensor stream
+![](data/graphics/snesor_stream.png)
+
+---
+Orginial README contents are as follows:
+---
+---
 # BlueSky - The Open Air Traffic Simulator
 
 [![Open in Visual Studio Code](https://img.shields.io/static/v1?logo=visualstudiocode&label=&message=Open%20in%20Visual%20Studio%20Code&labelColor=2c2c32&color=007acc&logoColor=007acc)](https://open.vscode.dev/TUDelft-CNS-ATM/bluesky)
