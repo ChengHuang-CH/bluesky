@@ -9,8 +9,6 @@ from shapely.geometry import Polygon
 from shapely.ops import voronoi_diagram
 import shapely.wkt
 import geopandas as gpd
-from geovoronoi import voronoi_regions_from_coords
-import matplotlib.pyplot as plt
 
 
 # https://gis.stackexchange.com/questions/316697/delaunay-triangulation-algorithm-in-shapely-producing-erratic-result
