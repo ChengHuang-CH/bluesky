@@ -112,7 +112,7 @@ def save():
                'camera19': {'model': 'camera',
                             'extrinsic': {'latitude': pole19[0], 'longitude': pole19[1], 'altitude': 8.0,
                                           'pitch': 0, 'yaw': -10, 'roll': 0},
-                            'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 30, 'range': None}
+                            'intrinsic': {'img_width': 1920, 'img_height': 1080, 'fov': 40, 'range': None}
                             },
                }
     with open('../../../data/osm/sensor_config.json', 'w') as f:
