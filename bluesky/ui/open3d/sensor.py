@@ -895,12 +895,18 @@ class Sensor:
                 theta = np.arctan(pt_in_sensor[1] / pt_in_sensor[0])
                 theta = np.rad2deg(theta)
 
+                elevation = np.arctan(pt_in_sensor[2] / pt_in_sensor[0])  # z/x
+                elevation = np.rad2deg(elevation)
+
                 horizontal_fov = sensor_i_data['intrinsic']['horizontal_fov']
+                vertical_fov = sensor_i_data['intrinsic']['vertical_fov']
+
                 range = sensor_i_data['intrinsic']['range']
 
                 pt_in_sensor = [r, theta]  # [meter, degree]
 
-                if r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2:
+                if r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2 \
+                        or elevation < -vertical_fov / 2 or elevation > vertical_fov / 2:
                     r, theta = None, None  # out of detection region
                     pt_in_sensor = None
 
