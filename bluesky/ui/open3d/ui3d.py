@@ -629,7 +629,7 @@ class BlueSky3dUI:
                 label_text = f'{bs.traf.id[i]} \n ' \
                              f'{alt_text} \n' \
                              f'{round(bs.traf.cas[i]):.1f} m/s'
-                             # f'{int(round(bs.traf.cas[i] / kts))} knots' \
+                # f'{int(round(bs.traf.cas[i] / kts))} knots' \
 
                 label3d = self._3d.add_3d_label([x, y, 0], label_text)
                 label3d.color = text_color
@@ -1005,6 +1005,15 @@ class BlueSky3dUI:
 
     def _on_reset_button(self):
         stack.stack("RESET")
+
+        # reset sensor recording for current scenario and refresh for new scenarios.
+        try:
+            self.sensor.global_timestamp = []
+            self.sensor.all_ac_ids = []
+            self.sensor.current_ac_ids = []
+            self.sensor.subwindow_sensor_render.close()  # close the data streaming and stop recording
+        except:
+            pass  # in case reset when the stream is not opened
 
     def _on_filedlg_button(self):
         self.file_done = False  # reset the selection status for next usage.

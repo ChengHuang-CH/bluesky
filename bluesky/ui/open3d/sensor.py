@@ -120,6 +120,10 @@ class Sensor:
 
         self.file_to_save = None
 
+        self.global_timestamp = []
+        self.all_ac_ids = []
+        self.current_ac_ids = []
+
     def _on_check_sensor(self, is_checked):
         if is_checked:
             # plot sensor range bounding boxes
@@ -381,6 +385,9 @@ class Sensor:
 
         self.subwindow_sensor_render.set_on_layout(self._subwin_on_layout)
 
+        current_time = datetime.now()
+        self.file_to_save = current_time.strftime("%Y_%m_%d_%H_%M_%S")
+
         # -------------------- initialize sensors transformation matrix at first ----------------------
         for _idx, sensor_name in enumerate(self.sensor_names):
             sensor_transform = self.sensor_transform(self.sensor_data[sensor_name])
@@ -404,18 +411,6 @@ class Sensor:
                                             [o3d_cam_focus[0], o3d_cam_focus[1], 90],
                                             [0, 1, 0])
                 self._3d_wins[_idx].set_on_mouse(self._on_mouse_view2d)
-
-        # # ----------------------create recording file (2) - when show sensor stream -----------------
-        header = ['timestamp', 'LatLonAlt'] + [name for name in self.sensor_names]
-        current_time = datetime.now()
-        self.file_to_save = current_time.strftime("%Y_%m_%d_%H_%M_%S")
-        # current path is global path
-        with open(f'data/osm/{self.file_to_save}.csv', 'w', encoding='UTF8', newline='') as f:
-            writer = csv.writer(f)
-
-            # write the header
-            writer.writerow(header)
-        # ---------------------------------------------------------------------------------------------
 
     def _subwin_on_layout(self, context=None):
         frame = self.subwindow_sensor_render.content_rect
@@ -532,6 +527,7 @@ class Sensor:
 
     def update_sensor_stream(self):
         """
+        start updating after sensor subwindow opened
 
         """
         self.current_lat = bs.traf.lat
@@ -539,14 +535,92 @@ class Sensor:
         self.current_alt = bs.traf.alt
         self.current_hdg = bs.traf.hdg
         self.ntraf = bs.traf.ntraf
+        self.ids = bs.traf.id  # ['DRONE', 'DRONE1']  list of aircraft id
 
-        save_data = []  # empty for saving only current frame
+        # bs.sim.state   OP=2, HOLD=1
+        if self.ntraf > 0 and bs.sim.state != 1:  # fix the issue that keep recording repeated data for HOLD status
 
-        if self.ntraf > 0:
-            aircraft_point = [self.current_lat[0], self.current_lon[0], self.current_alt[0]]
+            print(bs.sim.state)
+            self.current_ac_ids = self.ids
 
-            save_data.append(tim2txt(bs.sim.simt))
-            save_data.append(aircraft_point)
+            deleted_ac = list(set(self.all_ac_ids) - set(self.current_ac_ids))
+            append_ac = list(set(self.current_ac_ids) - set(self.all_ac_ids))
+
+            if append_ac:
+                self.all_ac_ids += append_ac  # add new ac name to global archive
+                print(f'{append_ac} append to scn!')
+
+                # # -------------- create recording file (2) - if show sensor stream and add new aircraft --------
+                header = ['timestamp', 'LatLonAlt'] + [name for name in self.sensor_names]
+                for ac_name in append_ac:
+                    # current path is global path
+                    with open(f'data/osm/{self.file_to_save}_{ac_name}.csv', 'w', encoding='UTF8', newline='') as f:
+                        writer = csv.writer(f)
+                        # write the header
+                        writer.writerow(header)
+                        # append none in front N rows for the new append aircraft to use global timestamp.
+                        for prev_step in self.global_timestamp:
+                            prev_data = [prev_step] + [None] + [None for _ in self.sensor_names]
+                            writer.writerow(prev_data)
+
+                # ---------------------------------------------------------------------------------------------
+            if deleted_ac:
+                print(f'{deleted_ac} removed from scn!')
+
+            current_nest_data = []  # empty for each frame
+            for traf_i, ac_name in enumerate(self.current_ac_ids):
+                data_ = []
+                aircraft_point_i = [self.current_lat[traf_i], self.current_lon[traf_i], self.current_alt[traf_i]]
+                data_.append(tim2txt(bs.sim.simt))
+                data_.append(aircraft_point_i)
+
+                for sensor_name in self.sensor_names:
+                    # project targets into each sensor frame
+                    sensor_transform = self.sensor_data[sensor_name]['world2sensor']
+                    point_in_sensor = self.point_in_sensor_frame(aircraft_point_i, sensor_transform,
+                                                                 self.sensor_data[sensor_name])
+
+                    data_.append(point_in_sensor)
+                    print(f'[{tim2txt(bs.sim.simt)}] point in {sensor_name}: {point_in_sensor}')
+                current_nest_data.append(data_)
+
+            # -------------------------------------------------------------------------------------------------------
+            # for writing data to local files
+            if self.record:
+                for ac_name in deleted_ac:  # record for all aircraft (new, deleted, current ac in the same scn).
+                    # after cdir. current path is global path
+                    with open(f'data/osm/{self.file_to_save}_{ac_name}.csv', 'a', encoding='UTF8', newline='') as f:
+                        writer = csv.writer(f)
+                        # keep writing the none data for deleted aircraft
+                        _data = [tim2txt(bs.sim.simt)] + [None] + [None for _ in self.sensor_names]
+                        writer.writerow(_data)
+
+                for ac_name, ac_data in zip(self.current_ac_ids, current_nest_data):
+                    with open(f'data/osm/{self.file_to_save}_{ac_name}.csv', 'a', encoding='UTF8', newline='') as f:
+                        writer = csv.writer(f)
+                        # write the normal data for operating ac.
+                        writer.writerow(ac_data)
+
+                self.global_timestamp.append(
+                    tim2txt(bs.sim.simt))  # record t from the beginning of scn initialization
+
+            # -------------------------------------------------------------------------------------------------------
+            # only for plotting points in image and radar frame; not related to saving data
+
+            color_num = 100
+            ac_colors = [[ci / color_num, 1.0 - ci / color_num, 0.8] for ci in range(color_num)]
+            ac_colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            # get current operating color from all
+            current_c = []
+            for op_ac in self.current_ac_ids:
+                c_index = self.all_ac_ids.index(op_ac)
+
+                if c_index >= color_num:
+                    # color list not enough
+                    pass
+                else:
+                    current_c.append(ac_colors[c_index])
+
             for _idx, sensor_name in enumerate(self.sensor_names):
                 # remove geometry of last frame at first
                 try:
@@ -554,46 +628,42 @@ class Sensor:
                 except:
                     pass
 
-                # project targets into each sensor frame
-                sensor_transform = self.sensor_data[sensor_name]['world2sensor']
-                point_in_sensor = self.point_in_sensor_frame(aircraft_point, sensor_transform,
-                                                             self.sensor_data[sensor_name])
-
-                save_data.append(point_in_sensor)
-                print(f'[{tim2txt(bs.sim.simt)}] point in {sensor_name}: {point_in_sensor}')
-
-                if self.record:
-                    # save data and append to files
-                    print('recording')
-
                 # camera
-                if self.sensor_data[sensor_name]['model'] == 'camera' and point_in_sensor is not None:
+                if self.sensor_data[sensor_name]['model'] == 'camera':
                     # point_in_sensor = [u,v]
-                    xyz = self.uv2xyz(point_in_sensor)
-                    xyz = [xyz]
+                    xyzs = []
+                    colors = []
+                    for current_i, data in enumerate(current_nest_data):  # for each object
+                        points_in_sensor = data[2:]  # only keep data in sensors
+                        point_in_sensor = points_in_sensor[_idx]  # extract sensor i
 
-                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz))
-                    target_point_set.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(xyz))])
+                        if point_in_sensor is not None:
+                            xyz = self.uv2xyz(point_in_sensor)
+                            xyzs.append(xyz)
+                            colors.append(current_c[current_i])
+
+                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyzs))
+                    # each new/deleted/operating aircraft has its unique color
+                    target_point_set.colors = o3d.utility.Vector3dVector(colors)
                     self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_points', target_point_set, self.point_mat)
 
-                if self.sensor_data[sensor_name]['model'] == 'radar' and point_in_sensor is not None:
+                if self.sensor_data[sensor_name]['model'] == 'radar':
                     # point_in_sensor = [range,theta]
-                    xyz = self.polar2xyz(point_in_sensor)
-                    xyz = [xyz]
+                    xyzs = []
+                    colors = []
+                    for current_i, data in enumerate(current_nest_data):
+                        points_in_sensor = data[2:]
+                        point_in_sensor = points_in_sensor[_idx]
+                        if point_in_sensor is not None:
+                            xyz = self.polar2xyz(point_in_sensor)
+                            xyzs.append(xyz)
+                            colors.append(current_c[current_i])
 
-                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz))
-                    target_point_set.colors = o3d.utility.Vector3dVector([[1, 0, 0] for _ in range(len(xyz))])
+                    target_point_set = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyzs))
+                    target_point_set.colors = o3d.utility.Vector3dVector(colors)
                     self._3d_wins[_idx].scene.add_geometry(f'{sensor_name}_points', target_point_set, self.point_mat)
 
             print('-' * 50)
-
-            if self.record:
-                # after cdir. current path is global path
-                with open(f'data/osm/{self.file_to_save}.csv', 'a', encoding='UTF8', newline='') as f:
-                    writer = csv.writer(f)
-
-                    # write the data
-                    writer.writerow(save_data)
 
     @staticmethod
     def uv2xyz(u_v):
