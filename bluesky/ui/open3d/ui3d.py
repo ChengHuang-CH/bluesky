@@ -1004,7 +1004,10 @@ class BlueSky3dUI:
         stack.stack("HOLD")
 
     def _on_reset_button(self):
-        stack.stack("RESET")
+        try:
+            stack.stack("RESET")
+        except:
+            pass
 
         # reset sensor recording for current scenario and refresh for new scenarios.
         try:
@@ -1034,6 +1037,8 @@ class BlueSky3dUI:
         # self.app.post_to_main_thread(self.window, self.window.close_dialog)
         self.window.close_dialog()
         self.file_done = True
+
+        os.chdir(self.cdir)  # remember to change the dit path back to avoid reset issue
 
     def _on_filedlg_done(self, path):
         self._fileedit.text_value = path
