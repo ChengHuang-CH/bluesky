@@ -958,14 +958,17 @@ class Sensor:
             # pt_in_sensor: 4x1 [[x],[y],[z],[1]]
             pt_in_sensor = pt_in_sensor.squeeze(axis=1)  # 4x1 [[x],[y],[z],[1]] -> 4 [x,y,z,1]
             x = pt_in_sensor[0]
+            y = pt_in_sensor[1]
+            z = pt_in_sensor[2]
+
             if pt_in_sensor[0] < 0.001:  # include negative
                 pt_in_sensor = None
             else:
-                r = np.sqrt(pt_in_sensor[0] ** 2 + pt_in_sensor[1] ** 2)
-                theta = np.arctan(pt_in_sensor[1] / pt_in_sensor[0])
+                r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+                theta = np.arctan(y / x)
                 theta = np.rad2deg(theta)
 
-                elevation = np.arctan(pt_in_sensor[2] / pt_in_sensor[0])  # z/x
+                elevation = np.arcsin(z/r)  # z/r
                 elevation = np.rad2deg(elevation)
 
                 horizontal_fov = sensor_i_data['intrinsic']['horizontal_fov']
@@ -973,7 +976,7 @@ class Sensor:
 
                 range = sensor_i_data['intrinsic']['range']
 
-                pt_in_sensor = [r, theta]  # [meter, degree]
+                pt_in_sensor = [r, theta, elevation]  # [meter, degree, degree]
 
                 if r > range or theta < -horizontal_fov / 2 or theta > horizontal_fov / 2 \
                         or elevation < -vertical_fov / 2 or elevation > vertical_fov / 2:
