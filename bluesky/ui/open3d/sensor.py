@@ -614,12 +614,13 @@ class Sensor:
             current_c = []
             for op_ac in self.current_ac_ids:
                 c_index = self.all_ac_ids.index(op_ac)
+                current_c.append(ac_colors[c_index])
 
-                if c_index >= color_num:
-                    # color list not enough
-                    pass
-                else:
-                    current_c.append(ac_colors[c_index])
+                # if c_index >= color_num:
+                #     # color list not enough
+                #     pass
+                # else:
+                #     current_c.append(ac_colors[c_index])
 
             for _idx, sensor_name in enumerate(self.sensor_names):
                 # remove geometry of last frame at first

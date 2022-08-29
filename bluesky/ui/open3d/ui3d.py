@@ -1014,8 +1014,10 @@ class BlueSky3dUI:
             self.sensor.global_timestamp = []
             self.sensor.all_ac_ids = []
             self.sensor.current_ac_ids = []
-            self.sensor.subwindow_sensor_render.close()  # close the data streaming and stop recording
+            if self.sensor.subwindow_opened:
+                self.sensor.subwindow_sensor_render.close()  # close the data streaming and stop recording
         except:
+            print(f'reset stream issue')
             pass  # in case reset when the stream is not opened
 
     def _on_filedlg_button(self):
