@@ -20,6 +20,7 @@ from bluesky.tools.misc import tim2txt
 
 from .sensor import Sensor
 from .information import Info
+from .vertiports import Vertiports
 
 # colors
 black = (0, 0, 0)
@@ -82,6 +83,10 @@ class BlueSky3dUI:
         self.line_mat_thick = o3d.visualization.rendering.MaterialRecord()
         self.line_mat_thick.shader = "unlitLine"
         self.line_mat_thick.line_width = 2
+
+        self.line_mat_ = o3d.visualization.rendering.MaterialRecord()
+        self.line_mat_.shader = "unlitLine"
+        self.line_mat_.line_width = 10
 
         # cube for demo
         self.cube = o3d.geometry.TriangleMesh.create_box(width=1.0,
@@ -244,6 +249,10 @@ class BlueSky3dUI:
         self.sensor = Sensor(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat,
                              self.line_mat_thick, self.cdir)
         self.info_line.add_tab("Sensor", self.sensor.sensor_control)
+
+        self.vertiports = Vertiports(self.app, self.em, self.window, self.m, self.coord_scale, self._3d, self.line_mat,
+                                     self.line_mat_thick, self.cdir)
+        self.info_line.add_tab("Vertiports", self.vertiports.vertiport)
 
         self.collapse.add_child(self.info_line)
 
@@ -586,18 +595,15 @@ class BlueSky3dUI:
                 self.ndcrs = 0.0  # # manual set
                 isymb = int(round((bs.traf.hdg[i] - self.ndcrs) / 6.)) % 60
 
+                aircraft_i = o3d.geometry.LineSet(
+                    points=o3d.utility.Vector3dVector(self.aircraft_points),
+                    lines=o3d.utility.Vector2iVector(self.aircraft_lines),
+                )
+
                 if not bs.traf.cd.inconf[i]:  # not in conflict; green color
-                    aircraft_i = o3d.geometry.LineSet(
-                        points=o3d.utility.Vector3dVector(self.aircraft_points),
-                        lines=o3d.utility.Vector2iVector(self.aircraft_lines),
-                    )
                     aircraft_i.colors = o3d.utility.Vector3dVector(self.aircraft_colors_green)
                     text_color = gui.Color(0.0, 1.0, 0.0, 1.0)
                 else:  # in conflict; yellow
-                    aircraft_i = o3d.geometry.LineSet(
-                        points=o3d.utility.Vector3dVector(self.aircraft_points),
-                        lines=o3d.utility.Vector2iVector(self.aircraft_lines),
-                    )
                     aircraft_i.colors = o3d.utility.Vector3dVector(self.aircraft_colors_amber)
                     text_color = gui.Color(255 / 255, 163 / 255, 71 / 255, 1.0)
 
@@ -987,6 +993,17 @@ class BlueSky3dUI:
             self.cam_x, self.cam_y, self.cam_z = anchor_point[0], anchor_point[1], 2.0
             self._3d.look_at([self.cam_x, self.cam_y, 0], [self.cam_x, self.cam_y, self.cam_z], self.cam_up)
 
+            # vertipots
+            # center_x, center_y = self.m(-0.631025, 52.066504)
+            # center_x, center_y = center_x / self.coord_scale, center_y / self.coord_scale
+            # circlePoints, lines, colors = self.vertiports.gen_pad(center_x, center_y, 2/100)
+            # circle0_set = o3d.geometry.LineSet(
+            #     points=o3d.utility.Vector3dVector(circlePoints),
+            #     lines=o3d.utility.Vector2iVector(lines),
+            # )
+            # circle0_set.colors = o3d.utility.Vector3dVector(colors)
+            # self._3d.scene.add_geometry(f'circles', circle0_set, self.line_mat_thick)
+
         else:
             if self.osm_building_set is not None:
                 self._3d.scene.remove_geometry("osm_building_set")
@@ -1133,8 +1150,8 @@ class BlueSky3dUI:
                     zoom_speed = 0.01
 
                 self.cam_z += event.wheel_dy * zoom_speed
-                if self.cam_z < 0.12:
-                    self.cam_z = 0.12
+                if self.cam_z < 0.15:
+                    self.cam_z = 0.15
                 if self.cam_z >= 10000:
                     self.cam_z = 10000  # adapt from the coordinate_scale
 

@@ -8,8 +8,8 @@
 # speed unit: knots ; 1knot = 0.5144 m/s
 # alt unit: feet; 1 feet = 0.3048 m
 
-00:00:00.00>CRE DRONE,M600,52.070777, -0.627849,110, 19.7, 15
-
+00:00:00.00>CRE DRONE,M600,52.070777, -0.627849,110, 0, 0
+00:00:00.00>ADDWPT DRONE, 52.070777, -0.627849,19.7,10
 # show waypoints and trajectory of selected drone
 00:00:00.00>POS DRONE
 
