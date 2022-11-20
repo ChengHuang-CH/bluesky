@@ -941,7 +941,7 @@ class Sensor:
             u = list(u)
             v = list(v)
 
-            if not u or not v or dist[0] > 300:
+            if not u or not v or dist[0] > 3000:
                 pt_in_sensor = None
 
             # =========================================
@@ -952,7 +952,7 @@ class Sensor:
                 pt_in_sensor = [u, v]
             # =============================================
 
-            if dist[0] > 300:
+            if dist[0] > 3000:
                 pt_in_sensor = None
 
         elif sensor_i_data['model'] == 'radar':

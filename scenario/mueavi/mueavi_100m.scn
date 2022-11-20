@@ -1,0 +1,31 @@
+# ----------------------------------------------------------------------------
+# commanded speeds lower than 2 m/s are were interpreted as Mach numbers.
+# https://github.com/TUDelft-CNS-ATM/bluesky/issues/310
+# ----------------------------------------------------------------------------
+00:00:00.00>CASMACHTHR 0.0
+
+# CRE acid, type, lat, lon, hdg, alt, spd
+# speed unit: knots ; 1knot = 0.5144 m/s
+# alt unit: feet; 1 feet = 0.3048 m
+
+00:00:00.00>CRE DRONE,M600,52.070777, -0.627849,340, 0, 15
+
+00:00:00.00>ADDWPT DRONE, 52.070778, -0.627849,340,15
+# show waypoints and trajectory of selected drone
+00:00:00.00>POS DRONE
+
+#00:00:00.00>RTF 10
+
+#00:00:00.00>ADDWPT DRONE 52.070777, -0.627849,340,15
+00:00:00.00>ADDWPT DRONE 52.070061, -0.628171,340,15
+00:00:00.00>ADDWPT DRONE 52.067782, -0.628171,340,15
+00:00:00.00>ADDWPT DRONE 52.066766, -0.628407,340,15
+00:00:00.00>ADDWPT DRONE 52.066321, -0.631137,340,15
+
+00:00:00.00>LNAV DRONE ON
+00:00:00.00>VNAV DRONE ON
+#00:00:00.00>LISTRTE DRONE
+
+
+# to-do: use python plugin to dynamically change the prescribed route; propabilistic conflict dectection (air-air and air-ground);
+
