@@ -1,0 +1,43 @@
+# ----------------------------------------------------------------------------
+# commanded speeds lower than 2 m/s are were interpreted as Mach numbers.
+# https://github.com/TUDelft-CNS-ATM/bluesky/issues/310
+# ----------------------------------------------------------------------------
+00:00:00.00>CASMACHTHR 0.0
+
+# CRE acid, type, lat, lon, hdg, alt, spd
+# speed unit: knots ; 1knot = 0.5144 m/s
+# alt unit: feet; 1 feet = 0.3048 m
+
+00:00:00.00>CRE DRONE,M600,52.066847, -0.629612, 0, 0, 0
+# show waypoints and trajectory of selected drone
+00:00:00.00>POS DRONE
+
+00:00:00.00>DRONE ALT 60
+00:00:00.00>DRONE ATALT 60 SPD DRONE 15
+
+#00:00:00.00>ADDWPTMODE DRONE FLYOVER
+00:00:00.00>ADDWPT DRONE 52.067133, -0.629622,60,15
+00:00:00.00>ADDWPT DRONE 52.067133, -0.629622,60,15
+00:00:00.00>ADDWPT DRONE 52.067486, -0.629109,60,15
+00:00:00.00>ADDWPT DRONE 52.067743, -0.629138,60,15
+00:00:00.00>ADDWPT DRONE 52.067802, -0.629663,60,15
+00:00:00.00>ADDWPT DRONE 52.067745, -0.630190,60,15
+00:00:00.00>ADDWPT DRONE 52.067567, -0.630577,60,15
+00:00:00.00>ADDWPT DRONE 52.067260, -0.630692,60,15
+00:00:00.00>ADDWPT DRONE 52.067133, -0.630263,60,15
+00:00:00.00>ADDWPT DRONE 52.067148, -0.629764,10,8
+00:00:00.00>ADDWPT DRONE 52.066857, -0.629632,3,0
+
+#00:00:00.00> DRONE ATDIST 52.066847, -0.629612, 100, SPD DRONE 0
+
+00:00:00.00>LNAV DRONE ON
+00:00:00.00>VNAV DRONE ON
+#00:00:00.00>LISTRTE DRONE
+
+00:00:50.00>DRONE ATALT 5 DRONE ALT 0
+00:00:50.00>DRONE ATALT 5 SPD DRONE 0
+
+
+
+# to-do: use python plugin to dynamically change the prescribed route; propabilistic conflict dectection (air-air and air-ground);
+

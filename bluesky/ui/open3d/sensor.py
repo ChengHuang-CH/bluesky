@@ -609,7 +609,7 @@ class Sensor:
 
             color_num = 100
             ac_colors = [[ci / color_num, 1.0 - ci / color_num, 0.8] for ci in range(color_num)]
-            ac_colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            # ac_colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
             # get current operating color from all
             current_c = []
             for op_ac in self.current_ac_ids:
