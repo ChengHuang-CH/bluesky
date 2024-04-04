@@ -74,11 +74,11 @@ class BlueSky3dUI:
 
         self.line_mat = o3d.visualization.rendering.MaterialRecord()
         self.line_mat.shader = "unlitLine"
-        self.line_mat.line_width = 1.0
+        self.line_mat.line_width = 3.0
 
         self.line_mat_thin = o3d.visualization.rendering.MaterialRecord()
         self.line_mat_thin.shader = "unlitLine"
-        self.line_mat_thin.line_width = 0.5
+        self.line_mat_thin.line_width = 2
 
         self.line_mat_thick = o3d.visualization.rendering.MaterialRecord()
         self.line_mat_thick.shader = "unlitLine"
@@ -96,7 +96,8 @@ class BlueSky3dUI:
 
         self._3d = gui.SceneWidget()
         self._3d.scene = o3d.visualization.rendering.Open3DScene(self.window.renderer)
-        self._3d.scene.set_background([0.1, 0.1, 0.25, 1.0])
+        # self._3d.scene.set_background([0.1, 0.1, 0.25, 1.0])
+        self._3d.scene.set_background([1.0, 1.0, 1.0, 1.0])
         self._3d.scene.show_axes(True)
 
         self._3d.scene.add_geometry("coastlines", self.line_set, self.line_mat)
